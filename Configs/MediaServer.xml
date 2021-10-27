@@ -29,7 +29,7 @@
 
 	<BtSyncCheckForFiles>True</BtSyncCheckForFiles>
 	<BtSync_FolderLocation>E:\Data\Downloads\btsync</BtSync_FolderLocation>
-	<BtSync_Secret_Key>ADF5E5BA8ADAF6D024DD40B816516BA4A</BtSync_Secret_Key>
+	<BtSync_Secret_Key>SDAAADAF6D024DD40B816516BA4A</BtSync_Secret_Key>
 
 	<ServiceCheck>
         <service name="Emby" FriendlyName="Media Streaming Service (Emby)" executable="MediaBrowser.ServerApplication.exe" state="running" />

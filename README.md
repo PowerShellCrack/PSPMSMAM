@@ -8,12 +8,12 @@ Most script use the xml in config folder
 | File | Used by| Note |
 |--|--|--|
 |MediaServer.xml|MonitorMediaServer.ps1| Links to other configs, sets services and paths
-|Configs-Gmail.xml|
-|Configs-Plex.xml|
-|Configs-Radarr.xml|
-|Configs-Tautulli.xml|
-
-
+|Configs-Gmail.xml|SendPlexContent.ps1| Configures gmail smtp settings and links to creds file|
+|Configs-Plex.xml|All ps1|Plex settings and links to authentication file
+|Configs-Radarr.xml|UpdateRadarrMovies.ps1|
+|Configs-Tautulli.xml|MonitorMediaServer.ps1|Not used at moment|
+|_PlexAuth.xml_|All ps1|File needs to be generated per device|
+|_GmailAuth.xml_|SendPlexContent.ps1|File needs to be generated per device|
 ## Scripts Included
 
 | Script | Uses | Note |

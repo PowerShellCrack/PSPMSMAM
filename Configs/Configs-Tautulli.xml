@@ -7,7 +7,7 @@
 		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML TautulliAuth.xml
 	-->
 	<UserCredentials>.\TautulliAuth.xml</UserCredentials>
-	<TautulliAPI>510be99d06e5419aa7b3e372bb683c70</TautulliAPI>
+	<TautulliAPI>c0bf4ba89ba44fa38f9bf38ec42fdcd2</TautulliAPI>
 
 	<TautulliScriptConfigs>
 		<Name>TautulliAPIScript</Name>
@@ -15,7 +15,7 @@
 		<Version>1.1.0</Version>
 		<Date>12/8/2016</Date>
 		<!--> To generate new guid if version change, run in powershell: New-Guid -->
-		<GUID>605e8149-d9d0-465b-95e7-72b432511e63</GUID>
+		<GUID>c0bf4ba8-9ba4-4fa3-8f9b-f38ec42fdcd2</GUID>
 	</TautulliScriptConfigs>
 </TautulliConfigs>
 
