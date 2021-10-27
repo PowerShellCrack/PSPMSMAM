@@ -1,0 +1,9 @@
+OOBEUIWPF.config
+*.zip
+!/Logs/
+/Logs/*
+!/Modules/
+/Modules/*
+!/.vscode/
+/.vscode/*
+*test*

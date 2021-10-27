@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<PlexConfigs>
+	<PlexName>yourplexname</PlexName>
+	<PlexSupportURL>https://www.yourplexurl.com</PlexSupportURL>
+
+	<UseURLType>Internal</UseURLType>
+	<ExternalURL>https://www.yourplexurl.com/web/</ExternalURL>
+	<InternalURL>localhost:32400</InternalURL>
+	<!--
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML PlexAuth.xml
+	-->
+	<UserCredentials>.\PlexAuth.xml</UserCredentials>
+
+	<PlexScriptConfigs>
+		<Name>PSPlexAPIScript</Name>
+		<FriendlyName>PowerShell Plex API Script</FriendlyName>
+		<Version>1.1.0</Version>
+		<Date>12/8/2016</Date>
+		<!--> To generate new guid if version change, run in powershell: New-Guid -->
+		<GUID>c0bf4ba8-9ba4-4fa3-8f9b-f38ec42fdcd2</GUID>
+	</PlexScriptConfigs>
+
+	<RunPlexScannerList>False</RunPlexScannerList>
+	<PlexListExportPath>E:\Data\Plex\PlexLibrary.txt</PlexListExportPath>
+</PlexConfigs>
+

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<GmailConfigs>
+	<Server>smtp.gmail.com</Server>
+	<Port>587</Port>
+	<UseSSL>True</UseSSL>
+	<!--
+		If two factor is enabled a authenticatiopn app password must be specified
+
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML GmailAuth.xml
+	-->
+	<UserCredentials>GmailAuth.xml</UserCredentials>
+</GmailConfigs>
