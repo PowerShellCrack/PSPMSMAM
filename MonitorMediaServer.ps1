@@ -144,7 +144,8 @@ $ProcessesToCheck = $GlobalSettings.ProcessCheck.process
 [string]$Global:RadarrAPIkey = $RadarrConfigs.API
 [string]$OMDBAPI = $RadarrSettings.OMDBAPI
 [string]$TMDBAPI = $RadarrSettings.TMDBAPI
-[string[]]$VideoExtension = $RadarrSettings.VideoExtensions.ext -split ','
+[string[]]$VideoExtensions = $RadarrSettings.VideoExtensions.ext -split ','
+[string[]]$VideoSupportFiles = $RadarrSettings.VideoSupportFiles.ext -split ','
 [string]$MoviesDir = $RadarrSettings.MoviesRootPath
 
 [Boolean]$ProcessRequestedMovies = [Boolean]::Parse($RadarrMovieConfigs.MovetoGenreFolder)
@@ -189,54 +190,71 @@ Foreach($service in $ServicesToCheck){
     }
 }
 
-
-
+# Get all movies in Radarr (this is required for additonal details)
+$RadarrMovies = Get-RadarrMovies
 
 #CHECK BITSYNC FOLDER FOR VIDEOS
 ##------------------------------
+#TEST $DownloadedMoviePath = 'D:\Data\Downloads\sync'
 #get all download files that are videos
-$DownloadedFiles = Get-ChildItem -Path $DownloadedMoviePath -Recurse -Depth 1 | Where {$_.PSIsContainer -eq $false -and $_.Extension -in $VideoExtension}
+$DownloadedFiles = Get-ChildItem -Path $DownloadedMoviePath -Recurse -Depth 1 | Where {$_.PSIsContainer -eq $false -and $_.Extension -in $VideoExtensions}
 
-#determine which ones are movies
+#determine which ones are movies (regex example: movie.name.1999....)
 $DownloadedMovies = $DownloadedFiles | Where {$_.name -match "([ .\w']+?)(\W\d{4}\W?.*)" -and $_.name -notmatch "^.*S\d\dE\d\d"}
 
 #determine which ones are tv shows
 $DownloadedTvShows = $DownloadedFiles | Where {$_.name -match "^.*S\d\dE\d\d"}
 
-#$movie = $DownloadedMovies[0]
+#TEST $SyncdMovie = $DownloadedMovies[0]
 Foreach($SyncdMovie in $DownloadedMovies)
 {
-
     $VideoRootFolder = (Split-path $SyncdMovie.FullName -Parent)
-    #remove files that aren't video files.
-    If($VideoRootFolder -ne $DownloadedMoviePath){
-        $SourceFolder = $VideoRootFolder
-        Get-ChildItem -LiteralPath $SourceFolder -Recurse | Where {$_.PSIsContainer -eq $false -and $_.Extension -notin $VideoExtension} | Remove-Item -Force
-    }Else{
-        $SourceFolder = $SyncdMovie.FullName
+    
+    #Detemine if video is in its own folder or at root
+    If($VideoRootFolder -eq $DownloadedMoviePath)
+    {
+        $MovieSource = $SyncdMovie.FullName
+        $MovieDestination = $MovieRequestsPath + '\' +  $SyncdMovie.BaseName
+    }
+    Else{
+        $MovieSource  = $VideoRootFolder
+        $MovieDestination = $MovieRequestsPath
+        #remove files that aren't video files.
+        Get-ChildItem -LiteralPath $MovieSource -Recurse | 
+            Where {$_.PSIsContainer -eq $false -and $_.Extension -notin $VideoExtensions -and $_.Extension -notin $VideoSupportFiles} | 
+            Remove-Item -Force
     }
 
     Try{
-
-        Move-Item -LiteralPath $SourceFolder -Destination $MovieRequestsPath -Force
-    }Catch{
+        New-Item -Path $MovieDestination -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+        Move-Item -LiteralPath $MovieSource -Destination $MovieDestination -Force -ErrorAction Stop
+    }
+    Catch{
         $_.exception.message
     }
 }
 
+#Remove any files that are not video related
+Get-childitem $DownloadedMoviePath -Recurse | 
+    Where-Object {$_.PSIsContainer -eq $false -and $_.Extension -notin $VideoExtensions -and $_.Extension -notin $VideoSupportFiles} | Remove-Item
 
-##first get all movies (this is required for additonal details)
-$RadarrMovies = Get-RadarrMovies
+#delete all empty folders:
+Get-ChildItem $DownloadedMoviePath -Recurse | 
+    Where-Object -FilterScript {$_.PSIsContainer -eq $True} | 
+    Where-Object -FilterScript {($_.GetFiles().Count -eq 0) -and $_.GetDirectories().Count -eq 0} | Remove-Item
 
 ## CHECK MOVIE REQUESTS
 ##---------------------
 If($ProcessRequestedMovies)
 {
+    
     #movies request and have moved already
-    $RequestedMovies = Get-ChildItem -Path $MovieRequestsPath -Directory
+    #$RequestedMovies = Get-ChildItem -Path $MovieRequestsPath -Directory
+    $RequestedMovies = Get-ChildItem -LiteralPath $MovieRequestsPath -Recurse | Where {$_.PSIsContainer -eq $false -and $_.Extension -in $VideoExtensions}
 
-    #Loop throuh moview that have been movied into request folder
+    #Loop throuh movies that have been movied into request folder
     #TEST $Movie = $RequestedMovies[0]
+    #TEST $Movie = $RequestedMovies[-1]
     Foreach($Movie in $RequestedMovies)
     {
         $MovieName = $movie.BaseName
@@ -297,8 +315,9 @@ If($ProcessRequestedMovies)
             Else{
                 [array]$genres = $RadarrMovie.genres -split ','
 
-                If($genres.count -eq 0){[array]$genres = ($OnlineMovie.Genres -split ',').Trim()}
+                If($genres.count -eq 0){[array]$genres = ($OnlineMovie.Genres -split ',').Trim() | Select -Unique}
 
+                #$genre = $genres[0]
                 Foreach($genre in $genres){
                     If($genre -in $MoviesGenreMappings.Tag){
                         $MatchedMapping = $MoviesGenreMappings | Where Tag -eq $genre
@@ -319,7 +338,8 @@ If($ProcessRequestedMovies)
             }
 
             #get supported files in request folders for each movie
-            $files = Get-ChildItem -LiteralPath $Movie.FullName -Recurse | Where{$_.Extension -in $VideoExtension}
+            $WorkingMovieFolder = Split-Path $Movie.FullName -Parent
+            $files = Get-ChildItem -LiteralPath $WorkingMovieFolder -Recurse | Where {$_.Extension -in $VideoExtensions -and $_.Extension -in $VideoSupportFiles}
 
             If($files.count -gt 0)
             {
@@ -376,7 +396,7 @@ If($ProcessRequestedMovies)
                     write-host ("No destination path using genres [{0}] was determined for movie [{1}]" -f $genre,"$MovieTitle ($MovieYear)") -ForegroundColor Yellow
                 }
             }Else{
-                write-host ("No files with extensions [{0}] was found in folder [{1}\]" -f ($VideoExtension -join ','),$Movie.FullName) -ForegroundColor Yellow
+                write-host ("No files with extensions [{0}] was found in folder [{1}\]" -f ($VideoExtensions -join ','),$Movie.FullName) -ForegroundColor Yellow
                 Remove-Item -LiteralPath $Movie.FullName -Recurse -Force | Out-Null
             }
 
@@ -397,17 +417,75 @@ If($ProcessRequestedMovies)
 #get title that does not have a movie file
 $missingMovieFiles = $RadarrMovies | Where {$_.hasFile -eq $false } | Select id,Title,Year,path,@{n="exists";e={[bool](Test-Path $_.path)}}
 
-#find movies without year in path or yesr does not match path
+<#TODO 
+    Look to see if missing movies exist somewhere else. 
+    If so,compare folder genre with movie genre and update/move movie to right path
+#>
+
+
+#find movies without year in path or year does not match path
 $MovieYearDoesNotMatchPath = $RadarrMovies | Select id,Title,Year,path,@{n="exists";e={[bool](Test-Path $_.path)}},
                                                 @{n="PathYear";e={[regex]::match($_.path,'(19|20)[0-9][0-9]').value}},
                                                 @{n="YearMatchPath";e={If($_.Year -ne [regex]::match($_.path,'(19|20)[0-9][0-9]').value){$False}Else{$True}}} | Where {$_.YearMatchPath -eq $false}
 
-#find duplicate movies by title, imdb or tmdb
-$duplicateMovieTitles = $RadarrMovies | Group-Object -Property Title | Where-Object Count -GT 1
+#find duplicate movies by imdb
 $duplicateImdbMovies = $RadarrMovies | Group-Object -Property imdbId | Where-Object Count -GT 1
+
+<#TODO 
+    Look to see why there are duplicate tmdb movies. 
+    If multiple video files; determine the highest resoltion and delete all others and remove entry from radarr
+#>
+
+#TEST $dupMovieIMDB = $duplicateImdbMovies[-1]
+foreach($dupMovieIMDB in $duplicateImdbMovies)
+{
+    #Since both moviews ar ehte same we can build the proper title of movie from first instance
+    $movieTitle = $dupMovieIMDB.Group.Title[0] + ' (' + $dupMovieIMDB.Group.Year[0] + ')'
+
+    $MovieFiles = $dupMovieIMDB.Group.moviefile
+    Switch -regex ($MovieFiles.relativePath){
+       '1080p' {$UseRes = '1080p';break}
+       '720p' {$UseRes = '720p';break}
+    }
+
+    $KeepMovie = $null
+    #Determine whic movie is more properly named
+    If($MovieFiles.relativePath -match $UseRes){
+        $KeepMovie = $MovieFiles | Where {$_.relativePath -like "$movieTitle*"}
+    }
+
+    If($KeepMovie){
+        #TEST $dupmovie = $dupMovieIMDB.Group[-1]
+        Foreach($dupmovie in $dupMovieIMDB.Group | Where {$_.moviefile.id -ne $KeepMovie.id}){
+            Remove-Item $dupmovie.moviefile.Path -Force -ErrorAction SilentlyContinue
+        }
+        
+        #first remove all instances of movie in Radarr (due to duplicate entries)
+        Remove-RadarrMovie -Id $dupMovieIMDB.Group.id[0]
+
+        #re-add the movie to radarr as single instance
+        New-RadarrMovie -Title $dupMovieIMDB.Group.Title[0] `
+                    -Year $dupMovieIMDB.Group.Year[0] `
+                    -imdbID $dupMovieIMDB.Group.imdbId[0] `
+                    -tmdbID $dupMovieIMDB.Group.tmdbId[0] `
+                    -PosterImage ($dupMovieIMDB.Group.images[0] | Where coverType -eq 'poster' | select -ExpandProperty remoteurl) `
+                    -Path (Split-Path $KeepMovie.path -Parent) -SearchAfterImport
+    }
+
+    
+}
+
+#find duplicate movies by tmdb
 $duplicateTmdbMovies = $RadarrMovies | Group-Object -Property tmdbId | Where-Object Count -GT 1
 
-#Find if moviews with same title are just reboots (with different year)
+<#TODO 
+    Look to see why there are duplicate tmdb movies. 
+    If multiple video files; determine the highest resoltion and delete all others and remove entry from radarr
+#>
+
+#find duplicate movies by title
+$duplicateMovieTitles = $RadarrMovies | Group-Object -Property Title | Where-Object Count -GT 1
+#Find if movies with same title are just reboots (with different year)
 $MovieTitleNonReboot = @()
 #TEST $dupMovieTitle = $duplicateMovieTitles[0]
 #TEST $dupMovieTitle = $duplicateMovieTitles[1]

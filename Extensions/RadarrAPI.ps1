@@ -528,19 +528,27 @@ Function New-RadarrMovie {
         #Write-Verbose ('[{0}] Confirm={1} ConfirmPreference={2} WhatIf={3} WhatIfPreference={4}' -f $MyInvocation.MyCommand, $Confirm, $ConfirmPreference, $WhatIf, $WhatIfPreference)
     }
     Process {
+        <# TEST
+        $Title='Scream 2'
+        $Path='E:\Media\Movies\Mysteries & Horrors\Scream 2 (1997)\Scream 2 (1997) - Bluray-1080p.mp4'
+        $Imdbid='tt0120082'
+        $TmdbId= 4233
+        $Year='1997'
+        $PosterImage='https://image.tmdb.org/t/p/original/mumarnp1ZBHFdmt2q6x9ELuC3x0.jpg'
+        #>
+        
         If($VerbosePreference -eq "Continue"){Write-Host ("Processing details for movie title [{0}]..." -f $Title)}
         [string]$actualName = $Title
         [string]$sortName = ($Title).ToLower()
         $Regex = "[^{\p{L}\p{Nd}\'}]+"
         [string]$cleanName = (($Title) -replace $Regex,"").Trim().ToLower()
-        [string]$ActualYear = $Year
+        [int32]$ActualYear = $Year
         [string]$imdbID = $imdbID
         #[string]$imdbID = ($imdbID).substring(2,($imdbID).length-2)
         [int32]$tmdbID = $tmdbID
         [string]$Image = $PosterImage
         [string]$simpleTitle = (($Title).replace("'","") -replace $Regex,"-").Trim().ToLower()
         [string]$titleSlug = $simpleTitle + "-" + $tmdbID
-
         Write-Host ("Adding movie [{0}] to Radarr database..." -f $actualName) -ForegroundColor Yellow
         If($VerbosePreference -eq "Continue"){
             Write-Host ("   Title:") -ForegroundColor Gray -NoNewline
@@ -562,12 +570,12 @@ Function New-RadarrMovie {
         $Body = @{ title=$actualName;
             sortTitle=$sortName;
             cleanTitle=$cleanName;
-            qualityProfileId="1";
+            qualityProfileId=1;
             year=$ActualYear;
             tmdbid=$tmdbID;
             imdbid=$imdbID;
             titleslug=$titleSlug;
-            monitored="true";
+            monitored=$true;
             path=$Path;
             addOptions=@{
                 searchForMovie=[boolean]$SearchAfterImport
@@ -582,7 +590,7 @@ Function New-RadarrMovie {
         #$BodyArray = ConvertFrom-Json -InputObject $BodyObj
 
         $RadarrPostArgs = @{Headers = @{"X-Api-Key" = $Api}
-                        URI = "$URI"
+                        URI = $URI
                         Method = "Post"
                 }
 
