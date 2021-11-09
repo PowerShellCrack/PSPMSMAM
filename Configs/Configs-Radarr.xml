@@ -29,7 +29,8 @@
 		<UseRecentStoredIMDBDataDays>5</UseRecentStoredIMDBDataDays> <!-- For Future use: Stores data from IMDB for local use. Set to Zero (0) to disable.-->
 		<UseRecentStoredTMDBDataDays>5</UseRecentStoredTMDBDataDays> <!-- For Future use: Stores data from TMDB for local use. Set to Zero (0) to disable.-->
 
-        <VideoExtensions ext='.mkv,.mp4,.mpg,.mpeg,.avi,.srt'/>
+        <VideoExtensions ext='.mkv,.mp4,.mpg,.mpeg,.avi'/>
+	  <VideoSupportFiles ext='.srt'/>
 	</GlobalSettings>
 
 
