@@ -577,3 +577,117 @@ Function Start-FFMPEGProcess {
     }
 
 }
+
+
+Function ConvertTo-MovieData {
+    Param (
+        [Parameter(Mandatory=$true,Position=0)]
+        [string]$Value
+    )
+  
+    $MovieName = $Value
+
+    $ext = [System.IO.Path]::GetExtension($MovieName)
+    If($ext){$MovieName = $MovieName.replace($ext,'')}
+        
+    #find the resolution in movie name
+    $MatchVideoRes = "\b480p\b|\b720p\b|\b1080p\b|\b1440\b|\b2160p\b|\b4320p\b|\b2k\b|\b4k\b"
+    Do {
+        If($MovieName -match $MatchVideoRes){
+            $VideoRes = $Matches[0]
+            $MovieName = $MovieName -replace $matches.Values,''
+            $Matches = $null    
+        }
+    }Until($MovieName -notmatch $MatchVideoRes)
+
+    #find the video format in movie name
+    $MatchVideoFormat = "\bH264\b|\bx264\b|\bx265\b|\bHEVC\b|\bXVID\b|\bAVC\b|\bDIVX\b|\bVVC\b|\bEVC\b"
+    Do {
+        If($MovieName -match $MatchVideoFormat){
+            $VideoFormat = $Matches[0]
+            $MovieName = $MovieName -replace $matches.Values,''
+            $Matches = $null
+        }
+    }Until($MovieName -notmatch $MatchVideoFormat)
+
+    #find the video format in movie name
+    $MatchVideoFormat = "\bAAC\b|\bAAC5.1\b|\bDD5.1\b|\bAC3\b|\bDTS\b"
+    Do {
+        If($MovieName -match $MatchVideoFormat){
+            $AudioFormat = $Matches[0]
+            $MovieName = $MovieName -replace $matches.Values,''
+            $Matches = $null
+        }
+    }Until($MovieName -notmatch $MatchVideoFormat)
+
+
+    #find the video format in movie name
+    $MatchVideoFormat = "\bWEBDL\b|\bBDRip\b|\bBrRip\b|\bWEBRip\b|\bBluRay\b|\bCAM\b|\bSCREENER\b|\bHDCAM\b|\bTELESYNC\b|\bDVDr\b|\bDVDRip\b"
+    Do {
+        If($MovieName -match $MatchVideoFormat){
+            $VideoProfile = $Matches[0]
+            $MovieName = $MovieName -replace $matches.Values,''
+            $Matches = $null
+        }
+    }Until($MovieName -notmatch $MatchVideoFormat)
+
+    #find the video version in movie name
+    $MatchVideoVersion = "EXTENDED|DIRECTOR|EDITOR|THEATRICAL|FINAL|\bREMASTERED\b|RELEASE|Special|Unrated|Uncut"
+    Do {
+        If($MovieName -match $MatchVideoVersion){
+            $VideoVersion = $Matches[0]
+            $MovieName = $MovieName -replace $matches.Values,''
+            $Matches = $null
+            }
+    }Until($MovieName -notmatch $MatchVideoVersion)
+
+    #does the movie have a year incapsulated in parenthesis
+    If($MovieName -match ".?\((.*?)\).*"){
+        $MovieYear = $matches[1]
+        $MovieName = ($MovieName).replace("($MovieYear)","").Trim()
+        $Matches = $null
+    }
+    
+    #assume a four digit number starting with 19 or 20 is a year
+    if($MovieName -match "(19|20)[0-9][0-9]"){
+        $MovieYear = $matches[0]
+        $MovieName = ($MovieName -split $MovieYear)[0]
+        $Matches = $null
+    }
+    
+    #remove an leading special characters
+    $MatchLeadingEndingSpecials = "^\-|\-$|_$|\[$|\($|\)$"
+    Do {
+        If($MovieName -match $MatchLeadingEndingSpecials){
+            $MovieName = $MovieName -replace "\$($matches.Values)",' '
+        }
+    }Until($MovieName -notmatch $MatchLeadingEndingSpecials)
+
+    $MovieYear = $MovieYear.Trim()
+    $MovieTitle = $MovieName.replace('.',' ').Trim() -replace '\s+',' '
+
+    If($MovieYear){
+        $FullTitle = ($MovieTitle + ' (' + $MovieYear + ') ' + $VideoVersion + ' - ' + $VideoRes).replace('  ',' ')
+        $SimpleTitle = ($MovieTitle + ' (' + $MovieYear + ')').Trim()
+    }
+    Else{
+        $FullTitle = ($MovieTitle + ' ' + $VideoVersion + ' - ' + $VideoRes).replace('  ',' ')
+        $SimpleTitle = $MovieTitle
+    }
+
+    $movie = '' | Select Title,Year,Resolution,Profile,Video,Audio,Version,SimpleTitle,FullTitle,FileExtension,FileName
+    $movie.Title = $MovieTitle
+    $movie.Year = $MovieYear
+    $movie.SimpleTitle = $SimpleTitle
+    $movie.FullTitle = $FullTitle
+    $movie.Resolution = $VideoRes
+    $movie.Video = $VideoFormat
+    $movie.Audio = $AudioFormat
+    $movie.Profile = $VideoProfile
+    $movie.Version = $VideoVersion
+    $movie.FileExtension = $ext
+    $movie.FileName = $FullTitle + $ext
+    
+
+    return $movie
+}

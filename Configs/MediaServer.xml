@@ -2,34 +2,16 @@
 <AutomationConfig>
 
 	<SourceConfigs>
-		<Config id="Plex" Load="True" ConfigFile="Configs-Plex.xml" />
-		<Config id="Radarr" Load="True" ConfigFile="Configs-Radarr.xml" />
-		<Config id="Sonarr" Load="True" ConfigFile="Configs-Sonarr.xml" />
-		<Config id="Gmail" Load="True" ConfigFile="Configs-Gmail.xml" />
-		<Config id="Tautulli" Load="True" ConfigFile="Configs-Tautulli.xml" />
+		<Config id="Plex" Load="True" ConfigFile="Plex.xml" />
+		<Config id="Radarr" Load="True" ConfigFile="Radarr.xml" />
+		<Config id="Sonarr" Load="True" ConfigFile="Sonarr.xml" />
+		<Config id="Gmail" Load="True" ConfigFile="Gmail.xml" />
+		<Config id="Tautulli" Load="True" ConfigFile="Tautulli.xml" />
 	</SourceConfigs>
-
-	<DropboxConfigs>
-		<DropBoxSizeCheck>False</DropBoxSizeCheck>
-		<DropBoxSizeLimit>1,000,000,000</DropBoxSizeLimit>
-		<DropboxPath>$env:userprofile\Dropbox\Camera Uploads</DropboxPath>
-
-		<EnableDropboxBackup>False</EnableDropboxBackup>
-		<DropboxBCKDest>\\SERVER\SharedProfiles\Dropbox</DropboxBCKDest>
-	</DropboxConfigs>
-
-	<TVRenameCheck>False</TVRenameCheck>
-	<TVRenamePath>C:\Program Files (x86)\TVRename</TVRenamePath>
-
-	<ZipPath>C:\Program Files\7-Zip</ZipPath>
-	<ZipArchivePwd>Random</ZipArchivePwd>
-
-	<SeedBoxCheckForRar>True</SeedBoxCheckForRar>
-	<SeedBoxDownLocation>E:\Data\Downloads\Seedbox</SeedBoxDownLocation>
 
 	<BtSyncCheckForFiles>True</BtSyncCheckForFiles>
 	<BtSync_FolderLocation>E:\Data\Downloads\btsync</BtSync_FolderLocation>
-	<BtSync_Secret_Key>SDAAADAF6D024DD40B816516BA4A</BtSync_Secret_Key>
+	<BtSync_Secret_Key>AGEDVBGTF678AF6D024DD40B816516BA4A</BtSync_Secret_Key>
 
 	<ServiceCheck>
         <service name="Emby" FriendlyName="Media Streaming Service (Emby)" executable="MediaBrowser.ServerApplication.exe" state="running" />
@@ -45,12 +27,25 @@
         <service name="Unifi" FriendlyName="UniFi Controller" executable="UniFi.exe" state="running" />
 	</ServiceCheck>
 
+    <WebCheck>
+        <Web Name="Plex internal" URI="http://localhost:32400/web/" />
+        <Web Name="Plex external" URI="https://www.yourplexexternalurl.com/" />
+        <Web Name="Ombi" URI="https://www.yourombiexternalurl.com/ombi/" />
+        <Web Name="Local Ombi" URI="http://localhost:5000/ombi" />
+        <Web Name="Organizr" URI="http://localhost:8282/" />
+        <Web Name="Tautulli" ConnectType="API" Config=".\Configs\Tautulli.xml" />
+        <Web Name="rTorrent" ConnectType="XMLRPC" Config=".\Configs\rtorrent.xml" />
+        <Web Name="Jackett" URI="https://yourexternaljacketturl.com:56585/UI/Login" />
+        <Web Name="Local Resilio" URI="http://127.0.0.1:8888/gui/" Creds=".\Configs\ResilioAuth.xml" IgnoreCodes='401' />
+        <Web Name="Remote Resilio" URI="https://yourremoteresilio.com:37942/gui/" IgnoreCodes='401' />
+    </WebCheck>
+
 	<ProcessCheck>
 		<process name="Plex Media Server" exePath="C:\Program Files (x86)\Plex\Plex Media Server\Plex Media Server.exe" running="yes" />
 		<process name="peerblock" exePath="C:\Program Files\PeerBlock\peerblock.exe" running="yes" />
 		<process name="Azureus" exePath="C:\Program Files\Vuze\Azureus.exe" running="yes" />
 		<process name="Tautulli" exePath="C:\Python27\python.exe" command="E:\Data\Plex\Tautulli\Tautulli.py" running="yes" />
-		<process name="uTorrent" exePath="C:\Users\PlexAdmin\AppData\Roaming\uTorrent\uTorrent.exe" running="no" />
+		<process name="uTorrent" exePath="C:\Users\Administrator\AppData\Roaming\uTorrent\uTorrent.exe" running="no" />
 		<process name="NETGEAR Genie" exePath="C:\Program Files (x86)\NETGEAR Genie\bin\NETGEARGenie.exe" running="no" />
 		<process name="Dropbox" exePath="C:\Program Files (x86)\Dropbox\Client\Dropbox.exe" running="no" />
 		<process name="Tomcat" exePath="C:\Program Files (x86)\Apache Software Foundation\Tomcat 7.0\bin\Tomcat7.exe" running="yes" />
@@ -60,7 +55,6 @@
 		<ProcessDownloads>
 			<Folder>D:\Data\Downloads\btsync</Folder>
 			<Folder>D:\Data\Downloads\Seedbox</Folder>
-			<Folder>D:\Data\Downloads\Torrents\Completed</Folder>
 			<Folder>D:\Data\Downloads\Torrents\Completed</Folder>
 		</ProcessDownloads>
 

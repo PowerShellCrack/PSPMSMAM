@@ -1,7 +1,45 @@
-﻿Function Get-PlexAuthToken {
+﻿<#
+# ============================
+# PLEX API URI CALLS
+# ============================
+FRIEND INVITE --> 'https://plex.tv/api/v2/servers/{machineId}/shared_servers'                     # post with data
+HOME USER CREATE --> 'https://plex.tv/api/v2/home/users?title={title}'                             # post with data
+EXISTING USER --> 'https://plex.tv/api/v2/home/users?invitedEmail={username}'                     # post with data
+FRIEND SERVERS --> 'https://plex.tv/api/v2/servers/{machineId}/shared_servers/{serverId}'         # put with data
+PLEX SERVERS --> 'https://plex.tv/api/v2/servers/{machineId}'                                     # get
+FRIEND UPDATE --> 'https://plex.tv/api/v2/friends/{userId}'                                       # put with args, delete
+REMOVE HOME USER --> 'https://plex.tv/api/v2/home/users/{userId}'                                  # delete
+SIGN-IN --> 'https://plex.tv/users/sign_in.xml'                                                # get with auth
+WEBHOOKS --> 'https://plex.tv/api/v2/user/webhooks'                                           # get, post with data
+OPT-OUT --> 'https://plex.tv/api/v2/user/%(userUUID)s/settings/opt_outs'                      # get
+LINK --> 'https://plex.tv/api/v2/pins/link'                                                   # put
+
+# Hub sections
+VOD --> 'https://vod.provider.plex.tv/'                                                       # get
+WEB SHOWS --> 'https://webshows.provider.plex.tv/'                                             # get
+NEWS --> 'https://news.provider.plex.tv/'                                                     # get
+PODCASTS --> 'https://podcasts.provider.plex.tv/'                                             # get
+MUSIC --> 'https://music.provider.plex.tv/'                                                   # get
+
+# Key may someday switch to the following url. For now the current value works.
+# https://plex.tv/api/v2/user?X-Plex-Token={token}&X-Plex-Client-Identifier={clientId}
+key = 'https://plex.tv/users/account'
+
+#other api calls?
+http://localhost:32400/transcode/sessions
+http://localhost:32400/status/sessions
+http://localhost:32400/sync/refreshSynclists
+http://localhost:32400/sync/refreshContent
+
+
+
+#>
+
+
+Function Get-PlexAuthToken {
     <#
     .SYNOPSIS
-    Retuens Authentication token from Plex
+    Returns Authentication token from Plex
 
     .DESCRIPTION
     This script will login into https://plex.tv/users/sign_in.xml and return the user authentication token
@@ -28,7 +66,7 @@
 
     .EXAMPLE
     $StoredCredentials = Get-Credential
-    Get-PlexAuthToken -PlexUsername 'plexuser' -PlexPassword 'mypassword'
+    Get-PlexAuthToken -PlexUsername 'plexuser' -PlexPassword 'plexpassword'
 
     .NOTES
     https://github.com/sup3rmark/PlexCheck/blob/master/PlexCheck.ps1
@@ -42,8 +80,8 @@
         # Do not give a type, so that this may be $null or a PSCredential object
         # NOTE that there is no such thing as a null PSCredential object - the closest thing is [PSCredential]::Empty
         [Parameter(Mandatory=$true, ParameterSetName="Credential")]
-        # [System.Management.Automation.PSCredential]
-        [AllowNull()] $PlexCreds,
+        [System.Management.Automation.PSCredential]
+        [AllowNull()] $Credentials,
 
         [Parameter(Mandatory=$true, ParameterSetName="UserPass")]
         [AllowEmptyString()] [string] $PlexUsername,
@@ -54,31 +92,31 @@
     )
 
     Begin {
-        If ($PlexCreds.UserName) {
+        If ($Credentials.UserName) {
             # Note that we assume this is a PSCredential object, but it could be anything with a string UserName property and a string or SecureString Password property
-            $tmpPass = $PlexCreds.Password
+            $tmpPass = $Credentials.Password
             if ($tmpPass.GetType().FullName -ne "System.Security.SecureString") {
-                $GetCreds = Get-Credential
+                [System.Management.Automation.PSCredential]$UseCreds = Get-Credential
             }Else{
-                 $GetCreds = $PlexCred
+                [System.Management.Automation.PSCredential]$UseCreds = $Credentials
             }
         }
         ElseIf ($PlexUsername -and $PlexPassword) {
             $secstr = New-Object -TypeName System.Security.SecureString
             $PlexPassword.ToCharArray() | ForEach-Object {$secstr.AppendChar($_)}
-            $GetCreds = New-Object -typename System.Management.Automation.PSCredential -ArgumentList $PlexUsername, $secstr
+            $UseCreds = New-Object -typename System.Management.Automation.PSCredential -ArgumentList $PlexUsername, $secstr
         }
         Else{
-            $GetCreds = Get-Credential
+            [System.Management.Automation.PSCredential]$UseCreds = Get-Credential
         }
-        $tmpUser = $GetCreds.UserName
+        #$tmpUser = $UseCreds.UserName
     }
     Process{
 
         #'Get Credentials, convert to Base64 for basic HTML Authentication
         Try
         {
-            $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $GetCreds.GetNetworkCredential().UserName,$GetCreds.GetNetworkCredential().Password)))
+            $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $UseCreds.GetNetworkCredential().UserName,$UseCreds.GetNetworkCredential().Password)))
         }
         catch
         {
@@ -101,12 +139,12 @@
                                             'X-Plex-Platform-Version'=(Get-Host).Version.ToString();
                                             'X-Plex-Device'=$env:COMPUTERNAME
                                             'X-Plex-Version'=$Global:PlexScriptVersion.ToString();
-                                            'X-Plex-Username'=$GetCreds.GetNetworkCredential().UserName;
+                                            'X-Plex-Username'=$UseCreds.GetNetworkCredential().UserName;
                                         } -UseBasicParsing
         }
         Catch [System.Net.WebException] {
             $ErrorMessage = $_.Exception.Message
-            Write-Host ("Failed to authenticated to [{0}] using [{1}]. Error message [{2}]" -f $PlexUrl,$GetCreds.GetNetworkCredential().UserName,$ErrorMessage) -ForegroundColor Red
+            Write-Host ("Failed to authenticated to [{0}] using [{1}]. Error message [{2}]" -f $PlexUrl,$UseCreds.GetNetworkCredential().UserName,$ErrorMessage) -ForegroundColor Red
             $_.Exception.Response
             break;
         }
@@ -117,11 +155,43 @@
 }
 
 
+Function Get-PlexActivity{
+    [CmdletBinding()]
+    Param(
+    [Parameter(Mandatory=$False,Position=0)]
+    [string]$URI = 'http://localhost:32400' ,
+
+    [Parameter(Mandatory=$True,Position=0)]
+    [string]$PlexToken,
+
+    [switch]$Details
+    )
+
+    $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'}
+                                URI = "$URI/status/sessions"
+                                Method = "GET"
+            }
+
+
+    $Response = Invoke-WebRequest @iwrArgs -Body $BodyObj -UseBasicParsing
+    If($Details){
+        $Info = ($Response.Content | ConvertFrom-Json).MediaContainer.Metadata
+    }
+    Else{
+        $Info = ($Response.Content | ConvertFrom-Json).MediaContainer.Size
+    }
+    Return $Info
+}
+
+
 Function Get-PlexVideo {
     [CmdletBinding(DefaultParameterSetName="VideoMeta")]
     Param(
-    [Parameter(Mandatory=$True,Position=1)]
-        [string]$URI,
+    [Parameter(Mandatory=$True,Position=0)]
+    [string]$URI,
+
+    [Parameter(Mandatory=$True,Position=0)]
+    [string]$PlexToken,
 
     [Parameter(Mandatory=$False)]
     [ValidateSet('Watched','Unwatched','All')]
@@ -144,7 +214,7 @@ Function Get-PlexVideo {
     [int]$EpisodeNumber
     )
     Begin{
-        $UseURL = Validate-PlexURI $URI
+        $UseURL = Get-PlexURI $URI
     }
     Process{
         If($UseURL) #User specified their Plex Server
@@ -242,9 +312,9 @@ Function Get-PlexVideo {
 
 
 
-            If ($SeriesNumber) {$SearchResult = $SearchResult | Where {$_.parentIndex -eq $SeriesNumber}}
-            If ($VideoName -and ($EpisodeNumber -or $SeriesNumber -or $ShowName)){$SearchResult = $SearchResult | Where {$_.title -match $VideoName} }
-            If ($ShowName) {$SearchResult = $SearchResult | Where {($_.grandparentTitle -match $ShowName) -and ($_.Type -eq 'episode')}}
+            If ($SeriesNumber) {$SearchResult = $SearchResult | Where-Object {$_.parentIndex -eq $SeriesNumber}}
+            If ($VideoName -and ($EpisodeNumber -or $SeriesNumber -or $ShowName)){$SearchResult = $SearchResult | Where-Object {$_.title -match $VideoName} }
+            If ($ShowName) {$SearchResult = $SearchResult | Where-Object {($_.grandparentTitle -match $ShowName) -and ($_.Type -eq 'episode')}}
 
 
             Return $SearchResult
@@ -270,7 +340,7 @@ Function Get-PlexShow{
     )
 
     Begin{
-        $UseURL = Validate-PlexURI $URI
+        $UseURL = Get-PlexURI $URI
     }
     Process{
         If($UseURL) #User specified their Plex Server
@@ -307,8 +377,8 @@ Function Get-PlexShow{
                             } #Close directory in section loop
 
 
-        If ($ViewedStatus.ToLower() -eq 'part-watched'){$SearchResult = $SearchResult | Where {($_.viewedLeafCount -ne 0) -and ($_.leafCount -ne $_.viewedLeafCount)} }
-        ElseIf ($ViewedStatus.ToLower() -eq 'watched'){$SearchResult = $SearchResult | Where {$_.leafCount -eq $_.viewedLeafCount} }
+        If ($ViewedStatus.ToLower() -eq 'part-watched'){$SearchResult = $SearchResult | Where-Object {($_.viewedLeafCount -ne 0) -and ($_.leafCount -ne $_.viewedLeafCount)} }
+        ElseIf ($ViewedStatus.ToLower() -eq 'watched'){$SearchResult = $SearchResult | Where-Object {$_.leafCount -eq $_.viewedLeafCount} }
         Return $SearchResult
         }
 
@@ -321,46 +391,85 @@ Function Get-PlexShow{
 Function Set-PlexViewedStatus{
     [cmdletbinding()]
     Param(
-    [Parameter(Mandatory=$True,Position=1)]
-    [string]$URI,
+    [Parameter(Mandatory=$False,Position=0)]
+    [string]$URI = 'http://localhost:32400',
 
-    [Parameter(Mandatory=$True,ValueFromPipeline=$true,Position=0)]
+    [Parameter(Mandatory = $true)]
+    [string]$PlexToken,
+
+    [Parameter(Mandatory=$True,ValueFromPipeline=$true,Position=1)]
     [PSobject[]]$Key,
 
-    [Parameter(Mandatory=$True)]
+    [Parameter(Mandatory=$False)]
     [ValidateSet('Watched','Unwatched')]
     [string]$ViewedStatus
     )
 
     BEGIN {
-        $UseURL = Validate-PlexURI $URI
+        $UseURL = Get-PlexURI $URI
         If ($ViewedStatus.ToLower() -eq "watched") {$ScrobbleAction = "scrobble"}
         Else {$ScrobbleAction = "unscrobble"}
 
     }
     PROCESS {
-        ForEach ($ObjectKey in $Key)
-        {
-        If ($ObjectKey.GetType().Name -eq 'XmlElement')
+        ForEach ($ObjectKey in $Key){
+            If ($ObjectKey.GetType().Name -eq 'XmlElement')
             {
-            If ($ObjectKey.ratingKey){$ResolvedObjectKey = $ObjectKey.ratingKey}
+                If ($ObjectKey.ratingKey){$ResolvedObjectKey = $ObjectKey.ratingKey}
+            }
+            ElseIf ($ObjectKey.GetType().Name -eq 'String')
+            {
+                $ResolvedObjectKey = $ObjectKey
             }
 
-        ElseIf ($ObjectKey.GetType().Name -eq 'String')
-            {
-            $ResolvedObjectKey = $ObjectKey
-            }
+            $ScrobbleURL = $UseURL +"/" + $ScrobbleAction + "?key=" + $ResolvedObjectKey + "&identifier=com.plexapp.plugins.library"
 
-        $ScrobbleURL = $UseURL +"/" + $ScrobbleAction + "?key=" + $ResolvedObjectKey + "&identifier=com.plexapp.plugins.library"
-        $InvokeScrobbleAction = Invoke-WebRequest $ScrobbleURL -UseBasicParsing
-    }
+            $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'}
+                                URI = $ScrobbleURL
+                                Method = "GET"
+                        }
 
+            #get Server ID and current shares
+            $Null = Invoke-WebRequest @iwrArgs -Body $BodyObj -UseBasicParsing
 
+        }
     }
     END {}
 }
 
-Function Get-PlexRecentlyAddedMovies {
+
+Function Get-PlexAddedContent {
+    [cmdletbinding()]
+    param(
+        # Required: specify your Plex Token
+        #   To find your token, check here: https://support.plex.tv/hc/en-us/articles/204059436-Finding-your-account-token-X-Plex-Token
+        [Parameter(Mandatory = $true)]
+        [string]$PlexToken,
+
+        [Parameter(Mandatory=$False,Position=0)]
+        [string]$URI = 'http://localhost:32400',
+
+        # Optionally specify a number of days back to report
+        [int]$RecentAddedDays = 7
+    )
+    $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'}
+                                URI = "$URI/library/recentlyAdded"
+                                Method = "GET"
+                        }
+
+    $response = Invoke-WebRequest @iwrArgs -UseBasicParsing
+
+    $jsonlibrary = ConvertFrom-JSON $response.Content
+
+    # Grab those libraries!
+    $RecentContent = $jsonLibrary.MediaContainer.Metadata |
+        Where-Object {$_.addedAt -gt (Get-Date (Get-Date).AddDays(-$RecentAddedDays) -UFormat "%s")}
+        Sort-Object addedAt
+
+    return $RecentContent
+}
+
+Function Send-PlexRecentlyAddedEmail {
     <#
     .SYNOPSIS
     Pull a list of recently-added movies from Plex and send a listing via email
@@ -373,10 +482,10 @@ Function Get-PlexRecentlyAddedMovies {
     See param block for descriptions of available parameters
 
     .EXAMPLE
-    PS C:\>PlexCheck.ps1 -Token xx11xx11xx1100xx0x01
+    PS C:\>Send-PlexRecentlyAddedEMail -PlexToken xx11xx11xx1100xx0x01
 
     .EXAMPLE
-    PS C:\>PlexCheck.ps1 -Token xx11xx11xx1100xx0x01 -Url 10.0.0.100 -Port 12345 -Days 14 -EmailTo test@test.com -Cred StoredCredential
+    PS C:\>Send-PlexRecentlyAddedEMail -PlexToken xx11xx11xx1100xx0x01 -Url 10.0.0.100 -Port 12345 -Days 14 -EmailTo test@test.com -Credentials StoredCredential
 
     .NOTES
     https://github.com/sup3rmark/PlexCheck/blob/master/PlexCheck.ps1
@@ -393,23 +502,22 @@ Function Get-PlexRecentlyAddedMovies {
         # Required: specify your Plex Token
         #   To find your token, check here: https://support.plex.tv/hc/en-us/articles/204059436-Finding-your-account-token-X-Plex-Token
         [Parameter(Mandatory = $true)]
-        [string]$Token,
+        [string]$PlexToken,
 
-        # Optionally specify IP of the server we want to connect to
-        [string]$Url = 'http://127.0.0.1',
+        [Parameter(Mandatory = $true)]
+        [string]$OmdbApi,
 
-        # Optionally define a custom port
-        [int]$Port = '32400',
+        [Parameter(Mandatory=$False,Position=0)]
+        [string]$URI = 'http://localhost:32400',
 
         # Optionally specify a number of days back to report
         [int]$Days = 7,
 
-        # Specify whether to send email or just return list
-        [switch]$SendEmail,
-
         # Optionally define the address to send the report to
         # If not otherwise specified, send to the From address
-        [string]$EmailTo = 'default',
+        [string]$EmailTo,
+
+        [switch]$BccAllPlexUsers,
 
         # Specify the SMTP server address (if not gmail)
         # Assumes SSL, because security!
@@ -419,18 +527,19 @@ Function Get-PlexRecentlyAddedMovies {
         [int]$SMTPport = '587',
 
         # Specify the name used for the Credential Manager entry
-        [string]$Cred = 'PlexCheck',
+        [System.Management.Automation.PSCredential]$Credentials,
 
         # Specify the Library ID of any libraries you'd like to exclude
         [int[]]$ExcludeLib = 0,
 
-        # Specify whether to prevent sending email if there are no additions
-        [switch]$PreventSendingEmptyList,
+        [string]$Salutation = 'Hey there!',
+
+        [string]$PlexName = 'Plex',
+
+        [string]$ClosingMessage = 'Enjoy!',
 
         # Specify whether to omit the Plex Server version number from the email
         [switch]$OmitVersionNumber
-
-
     )
 
     #region Declarations
@@ -438,7 +547,14 @@ Function Get-PlexRecentlyAddedMovies {
     $imgPlex = "http://i.imgur.com/RyX9y3A.jpg"
     #endregion
 
-    $response = Invoke-WebRequest "$url`:$port/library/recentlyAdded/?X-Plex-Token=$Token" -Headers @{"accept"="application/json"} -UseBasicParsing
+
+    $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'}
+                                URI = "$URI/library/recentlyAdded"
+                                Method = "GET"
+                        }
+
+    $response = Invoke-WebRequest @iwrArgs -UseBasicParsing
+
     $jsonlibrary = ConvertFrom-JSON $response.Content
 
     # Grab those libraries!
@@ -453,10 +569,10 @@ Function Get-PlexRecentlyAddedMovies {
 
     # Initialize the counters and lists
     $movieCount = 0
-    $movieList = "<h1>Movies:</h1><br/><br/>"
+    $movieList = "<hr/><h1>Movies:</h1><br/>"
     $movieList += "<table style=`"width:100%`">"
     $tvCount = 0
-    $tvList = "<h1>TV Seasons:</h1><br/><br/>"
+    $tvList = "<hr/><h1>TV Seasons:</h1><br/>"
     $tvList += "<table style=`"width:100%`">"
 
     if ($($movies | Measure-Object).count -gt 0) {
@@ -466,18 +582,18 @@ Function Get-PlexRecentlyAddedMovies {
                 $movieCount++
 
                 # Retrieve movie info from the Open Movie Database
-                $omdbURL = "omdbapi.com/?t=$($movie.title)&y=$($movie.year)&r=JSON"
+                $omdbURL = "omdbapi.com/?apikey=$OmdbApi&t=$($movie.title)&y=$($movie.year)&r=JSON"
                 $omdbResponse = ConvertFrom-JSON (Invoke-WebRequest $omdbURL -UseBasicParsing).content
 
                 # If there was no result, try searching for the previous year (OMDB/The Movie Database quirkiness)
                 if ($omdbResponse.Response -eq "False") {
-                    $omdbURL = "omdbapi.com/?t=$($movie.title)&y=$($($movie.year)-1)&r=JSON"
+                    $omdbURL = "omdbapi.com/?apikey=$OmdbApi&t=$($movie.title)&y=$($($movie.year)-1)&r=JSON"
                     $omdbResponse = ConvertFrom-JSON (Invoke-WebRequest $omdbURL -UseBasicParsing).content
                 }
 
                 # If there was STILL no result, try searching for the *next* year
                 if ($omdbResponse.Response -eq "False") {
-                    $omdbURL = "omdbapi.com/?t=$($movie.title)&y=$($($movie.year)+1)&r=JSON"
+                    $omdbURL = "omdbapi.com/?apikey=$OmdbApi&t=$($movie.title)&y=$($($movie.year)+1)&r=JSON"
                     $omdbResponse = ConvertFrom-JSON (Invoke-WebRequest $omdbURL -UseBasicParsing).content
                 }
 
@@ -498,7 +614,8 @@ Function Get-PlexRecentlyAddedMovies {
                     $movieList += "<li><i>Director:</i> $($omdbResponse.Director)</li>"
                     $movieList += "<li><i>Plot:</i> $($omdbResponse.Plot)</li>"
                     $movieList += "<li><i>IMDB rating:</i> $($omdbResponse.imdbRating)/10</li>"
-                    $movieList += "<li><i>Added:</i> $(Get-Date $epoch.AddSeconds($movie.addedAt) -Format 'MMMM d')</li></ul></td>"
+                    $movieList += "<li><i>Added:</i> $(Get-Date $epoch.AddSeconds($movie.addedAt) -Format 'MMMM d')</li>"
+                    $movieList += "<li><i>Plex Library:</i><b> $($movie.librarySectionTitle)<b></li></ul></td>"
                 }
                 else {
                     # If the movie couldn't be found in the DB even with the one-year buffer, fail gracefully
@@ -511,12 +628,15 @@ Function Get-PlexRecentlyAddedMovies {
     }
 
     if ($($tvShows | Measure-Object).Count -gt 0) {
+        #TEST $show = $tvShows[0]
         foreach ($show in $tvShows) {
             # Due to how shows are nested, gotta dig deep to get the librarySectionID
             if ($($show.group) -is [array]) {
                 [int]$section = $($show.Group)[0].librarySectionID
+                [string]$Plexlibrary = $($show.Group)[0].librarySectionTitle
             } else {
                 [int]$section = $($show.Group).librarySectionID
+                [string]$Plexlibrary = $($show.Group).librarySectionTitle
             }
 
             # Make sure the media we're parsing isn't in an excluded library
@@ -525,7 +645,7 @@ Function Get-PlexRecentlyAddedMovies {
                  $tvCount++
 
                  # Retrieve show info from the Open Movie Database
-                 $omdbURL = "omdbapi.com/?t=$($show.name)&r=JSON"
+                 $omdbURL = "omdbapi.com/?apikey=$OmdbApi&t=$($show.name)&r=JSON"
                  $omdbResponse = ConvertFrom-JSON (Invoke-WebRequest $omdbURL -UseBasicParsing).content
 
                  # Build the HTML
@@ -543,6 +663,7 @@ Function Get-PlexRecentlyAddedMovies {
                     $tvList += "<ul><li><i>Genre:</i> $($omdbResponse.Genre)</li>"
                     $tvList += "<li><i>Rating:</i> $($omdbResponse.Rated)</li>"
                     $tvList += "<li><i>Plot:</i> $($omdbResponse.Plot)</li>"
+                    $tvList += "<li><i>Plex Library:</i><b> $Plexlibrary </b></li>"
                     $tvList += "<li><i>Now in library:</i><br/></li><ul>"
                     foreach ($season in ($show.Group | Sort-Object @{e={$_.index -as [int]}})){
                         if ($($season.leafCount) -gt 1) {
@@ -569,12 +690,14 @@ Function Get-PlexRecentlyAddedMovies {
         $tvList += "</table><br/>"
     }
 
-
+    $body = "<h2>$Salutation</h2>"
 
     if (($movieCount -eq 0) -AND ($tvCount -eq 0)) {
-        $body = "No movies or TV shows have been added to the Plex library in the past $days days. Sorry!"
-    } else {
-        $body = "<h1>Hey there!</h1><br/>Here's the list of additions to my Plex library in the past $days days.<br/>"
+        $body += "No movies or TV shows have been added to the <b>$PlexName</b> library in the past $days days. Sorry!"
+    }
+    else {
+        $body += "Here's the list of additions to the <b>$PlexName</b> library in the past $days days.<br/><br/>"
+
 
         if ($movieCount -gt 0) {
             $body += $movieList
@@ -583,39 +706,70 @@ Function Get-PlexRecentlyAddedMovies {
         if ($tvCount -gt 0) {
             $body += $tvList
         }
-        $body += "Enjoy!"
+        $body += $ClosingMessage
     }
 
     if (-not $OmitVersionNumber) {
-        $body += "<br><br><br><br><p align = right><font size = 1 color = Gray>Plex Version: $((Invoke-RestMethod "$url`:$port/?X-Plex-Token=$Token" -Headers @{"accept"="application/json"} -UseBasicParsing).mediaContainer.version)</p></font>"
+        $body += "<br><br><br><br><p align = right><font size = 1 color = Gray>Plex Version: $((Invoke-RestMethod "$URI/?X-Plex-Token=$PlexToken" -Headers @{"accept"="application/json"} -UseBasicParsing).mediaContainer.version)</p></font>"
     }
 
     $startDate = Get-Date (Get-Date).AddDays(-$days) -Format 'MMM d'
     $endDate = Get-Date -Format 'MMM d'
 
-    $credentials = Get-Credential
-
-    # If not otherwise specified, set the To address the same as the From
-    if ($EmailTo -eq 'default') {
-        $EmailTo = $credentials.UserName
+    If(!$Credentials){
+        $Credentials = Get-Credential
     }
+
+    # If not otherwise specified, find all plex users and add them
+    if ($EmailTo){
+        $SendTo = $EmailTo
+    }Else{
+        $SendTo = $credentials.UserName
+    }
+
+    If($BccAllPlexUsers){
+        #get all Plex users
+        $Users = Get-PlexUsers -PlexToken $PlexToken
+        $PlexUsers = ($users.email | Where-Object $_ -ne $credentials.UserName) -join ';'
+    }
+
     $subject = "Plex Additions from $startDate-$endDate"
 
-    if (-not($PreventSendingEmptyList -and (($movieCount+$tvCount) -eq 0)) -and $SendEmail) {
-        Send-MailMessage -From $($credentials.UserName) -to $EmailTo -SmtpServer $SMTPserver -Port $SMTPport -UseSsl -Credential $credentials -Subject $subject -Body $body -BodyAsHtml
+    $EmailParams = @{
+        From=$credentials.UserName
+        to=$SendTo
+        SmtpServer='smtp.gmail.com'
+        Port=587
+        UseSsl=$true
+        Credential=$Credentials
+        Subject=$subject
+        Body=$body
+        BodyAsHtml=$true
+    }
+
+    If($BccAllPlexUsers){
+        $EmailParams += @{
+            Bcc=$PlexUsers
+        }
+    }
+
+    if ( ($movieCount+$tvCount) -ne 0 ) {
+        Send-MailMessage @EmailParams
     }
 }
 
 Function Get-PlexLibraries{
     [cmdletbinding()]
     param(
-        [string]$URI,
+        [Parameter(Mandatory=$False,Position=0)]
+        [string]$URI = 'http://localhost:32400',
+
+        [Parameter(Mandatory=$true, ParameterSetName="Token")]
+        [string]$PlexToken,
 
         [ValidateSet('preferences','playing','history','library','New','OnDeck','RecentAdds','Channels','Views','transcodeQueue','Queues')]
         [string]$Section  = "library",
 
-        [Parameter(Mandatory=$true, ParameterSetName="Credential")]
-        [string]$PlexToken,
         [string]$Search,
         [string]$CustomAddr,
         [switch]$outJSON
@@ -623,7 +777,7 @@ Function Get-PlexLibraries{
 
 
     Begin {
-        $UseURL = Validate-PlexURI $URI
+        $UseURL = Get-PlexURI $URI
 
         If ($Search){
             $plexRESTAddr = "Search/$Search"
@@ -702,42 +856,51 @@ Function Get-PlexLibraries{
 }
 
 
-Function Share-Library{
+Function Set-SharedPlexLibrary{
     <#.EXAMPLE
-        (Invoke-RestMethod -Uri "http://plex.tv/api/servers/e721eed77500ee0b7a14f15e0b4868ca8d5731a2/shared_servers" -Method POST -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.SharedServer
+        (Invoke-RestMethod -Uri "https://plex.tv/api/v2/servers/e721eed77500ee0b7a14f15e0b4868ca8d5731a2/shared_servers" -Method POST -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.SharedServer
 
     #>
     [cmdletbinding()]
     param(
         [Parameter(Mandatory=$true)]
-        [string]$URI,
+        [string]$PlexToken,
+
+        [Parameter(Mandatory=$False,Position=0)]
+        [string]$URI = 'http://localhost:32400',
+
+        [switch]$AllOwned,
+
         [Parameter(Mandatory=$true)]
         [string]$Library,
+
         [string]$User
     )
     Begin {
-        $UseURL = Validate-PlexURI $URI
-
         #get Server ID and current shares
-        $MachineID = ( (Invoke-RestMethod -Uri "http://plex.tv/api/servers" -Method GET -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.Server | Where {$_.owned -eq 1}).machineIdentifier
-        $CurrentShares = (Invoke-RestMethod -Uri "http://plex.tv/api/servers/$MachineID/shared_servers" -Method POST -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.SharedServer
+        If($AllOwned){
+            $MachineID = ( (Invoke-RestMethod -Uri "https://plex.tv/api/v2/servers" -Method GET -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.Server | Where-Object owned -eq 1).machineIdentifier
+        }Else{
+            $MachineID = ( (Invoke-RestMethod -Uri "http://localhost:32400/servers" -Method GET -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.Server | Where-Object owned -eq 1).machineIdentifier
+        }
 
-        $CurrentShares | select id, username, userid
+        $CurrentShares = (Invoke-RestMethod -Uri "https://plex.tv/api/v2/servers/$MachineID/shared_servers" -Method POST -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.SharedServer
 
-        (Invoke-RestMethod -Uri "http://plex.tv/api/servers/$MachineID/shared_servers" -Method POST -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.SharedServer | Where {$_.username -eq 'timak79'}
+        $CurrentShares | Select-Object id, username, userid
+
+        #(Invoke-RestMethod -Uri "https://plex.tv/api/v2/servers/$MachineID/shared_servers" -Method POST -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.SharedServer | Where {$_.username -eq 'timak79'}
 
         #get libraries ID
-        $allLibraries = Get-PlexLibraries -URI $PlexURL -PlexToken $PlexAuthToken
-        $FilteredLibraries = $allLibraries | Where {$_.title -ne 'Pre-roll' -and $_.type -ne 'photo'}| Select key,title,type
+        $allLibraries = Get-PlexLibraries -URI "https://plex.tv/api/v2" -PlexToken $PlexToken
+        $FilteredLibraries = $allLibraries | Where-Object {$_.title -ne 'Pre-roll' -and $_.type -ne 'photo'}| Select-Object key,title,type
         $SharedLibrariesIDList = "[" + ($FilteredLibraries.key -join ",") + "]"
 
 
         #get user ID
-        $Users = Get-PlexUsers
-
-        $User = '6995444'
+        $Users = Get-PlexUsers -PlexToken $PlexToken
     }
     Process{
+        #TEST $User = $Users[0]
         Foreach ($User in $users){
 
             #add users to library
@@ -749,17 +912,14 @@ Function Share-Library{
                  }
 
             $BodyObj = ConvertTo-Json -InputObject $Body
-            $BodyArray = ConvertFrom-Json -InputObject $BodyObj
 
-            $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'}
-                            URI = "http://plex.tv/api/servers/$MachineID/shared_servers"
+            $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'}
+                            URI = "https://plex.tv/api/v2/servers/$MachineID/shared_servers"
                             Method = "POST"
                     }
 
             (Invoke-WebRequest @iwrArgs -Body $BodyObj -UseBasicParsing).RawContent | Out-Null
         }
-
-
     }
     End {
 
@@ -768,21 +928,85 @@ Function Share-Library{
 
 
 
+
+
 Function Get-PlexUsers {
-    (Invoke-RestMethod -Uri "http://plex.tv/api/users" -Method GET -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.User
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$PlexToken
+    )
+    $iwrArgs = @{Headers = @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'}
+                            URI = 'https://plex.tv/api/users'
+                            Method = "GET"
+                    }
+
+    #get Server ID and current shares
+    [xml]$UserContent = (Invoke-WebRequest @iwrArgs -Body $BodyObj -UseBasicParsing).Content
+
+    $UserContent.MediaContainer.User
+
 }
 
 Function Get-PlexUser {
-    (Invoke-RestMethod -Uri "http://plex.tv/api/users" -Method GET -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.User | Where{$_.Title -like 'timak79'}
-    (Invoke-RestMethod -Uri "http://plex.tv/api/users" -Method GET -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing).MediaContainer.User | Where{$_.id -eq '7282248'}
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$PlexToken,
+        [Parameter(Mandatory=$False,ParameterSetName='id')]
+        [string]$Id,
+        [Parameter(Mandatory=$False,ParameterSetName='email')]
+        [ValidatePattern('^([\w-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([\w-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$')]
+        [string]$Email,
+        [Parameter(Mandatory=$False,ParameterSetName='username')]
+        [string]$Username,
+        [switch]$Wildcard
+    )
+
+    switch($PSCmdlet.ParameterSetName){
+        'id' {$Value = $Id}
+        'email' {$Value = $Email}
+        'username' {$Value = $Username}
+    }
+
+    If($Wildcard){
+        Get-PlexUsers -PlexToken $PlexToken | Where-Object{$_.($PSCmdlet.ParameterSetName) -like "*$Value*"}
+    }
+    Else{
+        Get-PlexUsers -PlexToken $PlexToken | Where-Object{$_.($PSCmdlet.ParameterSetName) -eq $Value}
+    }
 }
 
-Function Invite-PlexUser {
-    #Validate user email on plex.tv
-    (Invoke-RestMethod -Uri "http://plex.tv/api/users/validate?invited_email=$email" -Method POST -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing)
+Function Invoke-PlexUserInvite {
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$PlexToken,
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [ValidatePattern('^([\w-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([\w-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$')]
+        [string]$Email,
+        [switch]$Validate
+    )
 
-    #invite user
-    (Invoke-RestMethod -Uri "http://plex.tv/api/home/users?invitedEmail=$email" -Method POST -headers @{'X-Plex-Token'=$PlexAuthToken;'Accept'='application/json'} -UseBasicParsing)
+    If(Get-PlexUser -PlexToken $PlexToken -Email $Email){
+        return 'User already exists'
+    }
+    try{
+        #Validate user email on plex.tv
+        If($Validate){
+            $Response = Invoke-RestMethod -Uri "https://plex.tv/api/users/validate?invited_email=$Email" -Method POST -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing
+        }
+        Else{
+            #invite user
+            $Response = Invoke-RestMethod -Uri "https://plex.tv/api/home/users?invitedEmail=$Email" -Method POST -headers @{'X-Plex-Token'=$PlexToken;'Accept'='application/json'} -UseBasicParsing
+        }
+    }
+    Catch{
+        $_.Exception.Message
+    }
+    Finally{
+        $Response.Response.status
+    }
 }
 
 
@@ -790,15 +1014,17 @@ Function Get-PlexContentInLibrary{
 
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true)]
-        [string]$URI,
+        [Parameter(Mandatory=$false)]
+        [string]$URI = 'https://plex.tv/api',
+
         [Parameter(Mandatory=$true)]
         [string]$PlexToken,
-        [string]$Search,
+
+        [string]$Filter,
+
         [Parameter(Mandatory=$true)]
-        [ValidateSet('Show','Movie')]
-        [string]$Type,
-        [switch]$AllDetails
+        [ValidateSet('Show','Movie','Music')]
+        [string]$Type
 
     )
     Begin{
@@ -806,36 +1032,34 @@ Function Get-PlexContentInLibrary{
         $sections = Get-PlexLibraries -URI $URI -PlexToken $PlexToken
     }
     Process{
-        $libraryKey = [string] ($sections | Where-Object{$_.title -like $Search -and $_.type -eq $Type} | Select -First 1).key
+        $libraryKey = [string] ($sections | Where-Object{$_.title -like "$Filter" -and $_.type -eq $Type} | Select-Object -First 1).key
         If($libraryKey){
             $LibraryContent = Get-PlexLibraries -URI $URI -PlexToken $PlexToken -CustomAddr ('library/sections/'+ $libraryKey +'/all') -Verbose:$VerbosePreference
         }
         Else{
-            Write-Host ("Unable to find a library with the name of [{0}]" -f $Search) -ForegroundColor Red
+            Write-Host ("Unable to find a library with the name of [{0}]" -f $Filter) -ForegroundColor Red
             return
         }
     }
     End{
-        If($AllDetails){
-            return $LibraryContent
-        }
-        Else{
-            return $LibraryContent | Select title, studio
-        }
+        return $LibraryContent
     }
 }
 
-Function Validate-PlexURI{
+
+Function Get-PlexURI{
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true)]
-        [System.Uri]$URI,
-        [System.Uri]$defaultURI = "http://localhost:32400"
+        [Parameter(Mandatory=$false)]
+        [System.Uri]$URI
     )
 
     Begin{
-        $OriginalURI = $URI
-        $validAddress = $null
+        #$OriginalURI = $URI
+        #$validAddress = $null
+        If(!$URI){
+            [System.Uri]$URI = "http://localhost:32400"
+        }
     }
     Process{
         Try{
@@ -856,12 +1080,8 @@ Function Validate-PlexURI{
         Catch{
 
         }
-
-
     }
     End{
         return $newURI.OriginalString
     }
 }
-
-# 'iva://api.internetvideoarchive.com/2.0/DataService/VideoAssets(574105)?lang=en&bitrates=80,212,450,750,1500,8000&duration=29&adaptive=1&dts=0

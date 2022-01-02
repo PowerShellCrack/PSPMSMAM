@@ -1,4 +1,3 @@
-OOBEUIWPF.config
 *.zip
 !/Logs/
 /Logs/*
@@ -6,4 +5,5 @@ OOBEUIWPF.config
 /Modules/*
 !/.vscode/
 /.vscode/*
-*test*
+*Auth.xml
+*code-workspace

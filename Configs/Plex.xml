@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<PlexConfigs>
+	<PlexName>Trickys Plex on Demand</PlexName>
+	<PlexSupportURL>https://www.trickysplexondemand.com</PlexSupportURL>
+
+	<UseURLType>Internal</UseURLType>
+	<ExternalURL>https://www.trickysplexondemand.com/web/</ExternalURL>
+	<InternalURL>localhost:32400</InternalURL>
+	<!--
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML PlexAuth.xml
+	-->
+	<UserCredentials>.\PlexAuth.xml</UserCredentials>
+
+	<PlexScriptConfigs>
+		<Name>PSPlexAPIScript</Name>
+		<FriendlyName>PowerShell Plex API Script</FriendlyName>
+		<Version>1.1.0</Version>
+		<Date>12/8/2016</Date>
+		<!--> To generate new guid if version change, run in powershell: New-Guid -->
+		<GUID>9bd7e719-bcb3-4dcd-90aa-abcb1f1326b8</GUID>
+	</PlexScriptConfigs>
+
+	<RunPlexScannerList>False</RunPlexScannerList>
+	<PlexListExportPath>E:\Data\Plex\PlexLibrary.txt</PlexListExportPath>
+</PlexConfigs>

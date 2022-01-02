@@ -151,3 +151,108 @@ function Remove-StringDiacritic
 		}
 	}
 }
+
+function Trim-Length {
+    param (
+        [parameter(Mandatory=$True,ValueFromPipeline=$True)] 
+        [string] $Str,
+        [parameter(Mandatory=$True,Position=1)]
+        [int] $Length,
+        [switch]$Traildots
+    )
+
+    If($Traildots -and $Str.Length -gt $Length){
+        ($Str[0..($Length-1)] -join "") + '...'  
+    }
+    Else{
+        $Str[0..($Length-1)] -join ""
+    }
+}
+
+
+
+function Merge-MultipleObjects {
+    [CmdletBinding()]
+    param (
+        [parameter(Mandatory=$True,Position=1)]
+        [Object]$Object1,
+
+        [parameter(Mandatory=$True,Position=2)]
+        [Object]$Object2,
+
+        [parameter(Mandatory=$False,Position=3)]
+        [Object]$Object3,
+
+        [parameter(Mandatory=$False,Position=4)]
+        [Object]$Object4,
+
+        [switch]$IncludeMethods,
+
+        [switch]$OverwriteSameProperties,
+
+        [switch]$IncludeNullValues
+    )
+    
+    If($IncludeMethods){$IsSettableBool = 'True|False'}Else{$IsSettableBool = 'True'}
+    
+    $Object = [ordered] @{}
+    Try{
+        foreach ($Property in $Object1.PSObject.Properties | Where IsSettable -match $IsSettableBool) {
+            If($IncludeNullValues){
+                $Object += @{$Property.Name = $Property.Value}
+            }Else{
+                If($Property.Value){$Object += @{$Property.Name = $Property.Value}}
+            }
+
+        }
+        foreach ($Property in $Object2.PSObject.Properties | Where IsSettable -match $IsSettableBool) {
+        
+            If($OverwriteSameProperties -and $Object.PSObject.BaseObject.GetEnumerator() | Where Name -eq $Property.Name){
+                 $Object.$($Property.Name) = $Property.Value
+            }
+            Else{
+                If($IncludeNullValues){
+                    $Object += @{$Property.Name = $Property.Value}
+                }Else{
+                    If($Property.Value){$Object += @{$Property.Name = $Property.Value}}
+                }
+            }
+        }
+
+        If($Object3){
+            foreach ($Property in $Object3.PSObject.Properties | Where IsSettable -match $IsSettableBool) {
+                If($OverwriteSameProperties -and $Object.PSObject.BaseObject.GetEnumerator() | Where Name -eq $Property.Name){
+                    $Object.$($Property.Name) = $Property.Value
+                }
+                Else{
+                    If($IncludeNullValues){
+                        $Object += @{$Property.Name = $Property.Value}
+                    }Else{
+                        If($Property.Value){$Object += @{$Property.Name = $Property.Value}}
+                    }
+                }
+            }
+        }
+
+        If($Object4){
+            foreach ($Property in $Object4.PSObject.Properties | Where IsSettable -match $IsSettableBool) {
+                If($OverwriteSameProperties -and $Object.PSObject.BaseObject.GetEnumerator() | Where Name -eq $Property.Name){
+                    $Object.$($Property.Name) = $Property.Value
+                }
+                Else{
+                    If($IncludeNullValues){
+                        $Object += @{$Property.Name = $Property.Value}
+                    }Else{
+                        If($Property.Value){$Object += @{$Property.Name = $Property.Value}}
+                    }
+                }
+            }
+        }
+    }
+    Catch{
+        #catch the error and DO NOTHING if same properties exist and overwrite is not True
+    }
+    Finally{
+        [pscustomobject] $Object
+    }
+}

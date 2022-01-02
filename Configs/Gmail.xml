@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<GmailConfigs>
+	<Server>smtp.gmail.com</Server>
+	<Port>587</Port>
+	<UseSSL>True</UseSSL>
+
+	<UseAppAuth>True</UseAppAuth>
+	<!--
+		If two factor is enabled a authentication app password must be specified instead
+		https://support.google.com/accounts/answer/185833?hl=en
+
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML GmailAuth.xml
+	-->
+	<UserCredentials>GmailAuth.xml</UserCredentials>
+	<AppCedentials>GmailAppAuth.xml<AppCedentials>
+
+</GmailConfigs>

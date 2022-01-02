@@ -43,7 +43,7 @@ function Remove-EmptyDirs {
         [switch] $VerifyNoEmpty
     )
     Begin{
-        if (-not (Test-Path -Path $Path -PathType Container)) {
+        if (-not (Test-Path -Path $Path -PathType Container)) { 
             write-host "The specified path does not exist." -ForegroundColor Red
             break
         }
@@ -51,19 +51,19 @@ function Remove-EmptyDirs {
     Process{
         $FoundEmpty = $false
         Write-Host "Iterating '$Path'"
-        Get-ChildItem -Force -Recurse -Path $Path | Where-Object { $_.PSIsContainer } | ForEach-Object {
-            if ($Find -or -not $Confirm) {
-                if (-not (Get-ChildItem -Force $_.FullName)) {
+        Get-ChildItem -Force -Recurse -Path $Path | Where-Object { $_.PSIsContainer } | ForEach-Object {  
+            if ($Find -or -not $Confirm) {   
+                if (-not (Get-ChildItem -Force $_.FullName)) {     
                     # Directory should be empty
                     $_.FullName + ' is empty'
-                }
+                } 
             }
-
-            elseif ($Confirm -and $VerifyNoEmpty) {
+            
+            elseif ($Confirm -and $VerifyNoEmpty) { 
                 $Counter = 0
                 while (($OutsideFoundEmpty = Remove-EmptyDirs) -eq $true) {
                     $Counter++
-                    Write-Host -ForegroundColor Yellow "-VerifyNoEmpty specified. Found empty dirs on run no ${Counter}. Starting next run."
+                    Write-Host -ForegroundColor Yellow "-VerifyNoEmpty specified. Found empty dirs on run no ${Counter}. Starting next run." 
                 }
                 $Counter++
                 Write-Host "Made $Counter runs in total"
@@ -74,23 +74,23 @@ function Remove-EmptyDirs {
                     $FoundEmpty = $true
                     # Directory should be empty
                     Remove-Item -Force $_.FullName
-                    if (-not $?) {
+                    if (-not $?) { 
                         $message = "Error: $(Get-Date): Unable to delete $($_.FullName): $($Error[0].ToString))"
                         If($Log){$message | Out-File -Append $Log}
-                        Write-Host $message -ForegroundColor Red
-
+                        Write-Host $message -ForegroundColor Red 
+                        
                         $FoundEmpty = $false # avoid infinite loop
                     }
-                    else {
+                    else { 
                         $message = "$(Get-Date): Successfully deleted the empty folder: $($_.FullName)"
                         If($Log){$message | Out-File -Append $Log}
-                        Write-Host $message -ForegroundColor Green
+                        Write-Host $message -ForegroundColor Green 
                     }
                 }
-            }
-        }# end of ForEach-Object
+            }  
+        }# end of ForEach-Object 
     }
-    End{
+    End{ 
         return $FoundEmpty
     }
 } # end of function Remove-EmptyDirs
@@ -100,19 +100,19 @@ function Remove-EmptyDirs {
 Function Remove-AgedItems
 {
     <#
-
+    
     .DESCRIPTION
     Function that can be used to remove files older than a specified age and also remove empty folders.
 
     .PARAMETER Path
     Specifies the target Path.
-
+    
     .PARAMETER Age
     Specifies the target Age in days, e.g. Last write time of the item.
-
+    
     .PARAMETER Force
     Switch parameter that allows for hidden and read-only files to also be removed.
-
+    
     .PARAMETER Empty Folder
     Switch parameter to use empty folder remove function.
 
@@ -130,14 +130,14 @@ Function Remove-AgedItems
     It is recommended to first perform a cleanup of the aged files in the target path and them perform a cleanup of the empty folders.
 
     #>
-
+    
     param ([String][Parameter(Mandatory = $true)]
         $Path,
         [int][Parameter(Mandatory = $true)]
         $Age,
         [switch]$Force,
         [switch]$EmptyFolder)
-
+ 
     $CurrDate = (get-date)
 
     if (Test-Path -Path $Path)
@@ -160,7 +160,7 @@ Function Remove-AgedItems
             ForEach ($Folder in $Folders)
             {
                 If ($Folder.Object.GetFileSystemInfos().Count -eq 0)
-                {
+                { 
                     Remove-Item -Path $Folder.Object.FullName -Force
                     Start-Sleep -Seconds 0.2
                 }
@@ -171,7 +171,7 @@ Function Remove-AgedItems
             if ($Force.IsPresent)
             {
                 $AgedItems | Remove-Item -Recurse -Force
-
+                
             }
             else
             {

@@ -82,10 +82,15 @@ Function Search-MovieTitle{
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $ReturnBoolean
+        $ReturnBoolean,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $RequireBoth
 
     )
     Begin{
+        $AllTitles = @()
         $IMDBMovieTitles = @()
         $TMDBMovieTitles = @()
         $IMDBMovieInfo = $null
@@ -103,69 +108,62 @@ Function Search-MovieTitle{
         }
 
         If($AlternateTitles){
-            $AlternateTitles = $AlternateTitles | Select -Unique
+            $AllTitles = $AlternateTitles + $title | Select -Unique
+        }Else{
+            $AllTitles += $Title
         }
 
         [int]$Count = 1
 
-        If($ContinueToSearch -and $Title){
 
-            Write-Host ("Search for movie title [{1}]{2} in IMDB..." -f $SearchCountlabel,$Title,$YearLabel) -ForegroundColor Gray -NoNewline
-            $IMDBMovieInfo = Get-ImdbTitle -Title $Title @ParamHash -Api $IMDBApiKey -ErrorAction SilentlyContinue
-            If($IMDBMovieInfo){Write-Host ("Found {0}" -f $IMDBMovieInfo.Count)}Else{Write-Host "Found 0"}
-
-            Write-Host ("Search for movie title [{1}]{2} in TMDB..." -f $SearchCountlabel,$Title,$YearLabel) -ForegroundColor Gray -NoNewline
-            $TMDBMovieInfo = Find-TMDBItem -Type Movie -SearchAction ByType -Title $Title @ParamHash -ApiKey $TMDBApiKey -SelectFirst -ErrorAction SilentlyContinue
-            If($TMDBMovieInfo){Write-Host ("Found {0}" -f $TMDBMovieInfo.Count)}Else{Write-Host "Found 0"}
-
-            $NoSpecialIMDBTitles = ($IMDBMovieInfo.Title -replace 'é','e' -replace "[^{\p{L}\p{Nd}\'}]+", " ").Normalize("FormD") -replace '\p{M}'
-            $NoSpecialTMDBTitles = ($TMDBMovieInfo.Title -replace 'é','e' -replace "[^{\p{L}\p{Nd}\'}]+", " ").Normalize("FormD") -replace '\p{M}'
-
-            If(!$NoSpecialIMDBTitles -or !$NoSpecialTMDBTitles){
-                Write-Host ("Movie information for [{0}]{1} is not available from IMDB or TMDB" -f $Title,$YearLabel) -ForegroundColor Red
-                $ContinueToSearch = $true
-                #$AddMovietoRadarr = $false
-            }
-            ElseIf($NoSpecialIMDBTitles -ne $NoSpecialTMDBTitles){
-                If(( (Convert-WordToNumber $NoSpecialIMDBTitles) -eq (Convert-WordToNumber $NoSpecialTMDBTitles) ) -or ( (Convert-NumberToWord $NoSpecialIMDBTitles) -eq (Convert-NumberToWord $NoSpecialTMDBTitles) )){
-                    Write-Host ("Movie information was matched from both IMDB [{0}] and TMDB [{1}]{2}" -f $NoSpecialIMDBTitles,$NoSpecialTMDBTitles,$YearLabel) -ForegroundColor Green
-                    $MatchedMovieTitle = $IMDBMovieInfo.Title
-                    $ContinueToSearch = $false
-                }
-                Else{
-                    Write-Host ("Movie information does not match from IMDB [{0}] and TMDB [{1}]{2}" -f $IMDBMovieInfo.Title,$TMDBMovieInfo.Title,$YearLabel) -ForegroundColor Red
-                    $ContinueToSearch = $true
-                }
-            }
-            Else{
-                Write-Host ("Movie information was matched from both IMDB [{0}] and TMDB [{1}]{2}" -f $NoSpecialIMDBTitles,$NoSpecialTMDBTitles,$YearLabel) -ForegroundColor Green
-                $MatchedMovieTitle = $IMDBMovieInfo.Title
-                $ContinueToSearch = $false
-            }
-        }
-
-        If($AlternateTitles){
-            Foreach ($AlternateTitle in $AlternateTitles){
-
+        If($ContinueToSearch -and $AllTitles){
+            #TEST $WorkingTitle = $AllTitles[0]
+            #TEST $WorkingTitle = $AllTitles[1]
+            Foreach ($WorkingTitle in $AllTitles){
+                
                 $SearchCountlabel = Convert-NumberToWord -digit $Count -PastTense
 
-                If($ContinueToSearch -and ($AlternateTitle -ne $Title) ){
-                    Write-Host ("{0} search for alternate movie title [{1}]{2} in IMDB..." -f $SearchCountlabel,$AlternateTitle,$YearLabel) -ForegroundColor Gray -NoNewline
-                    $IMDBMovieInfo = Get-ImdbTitle -Title $AlternateTitle @ParamHash -Api $IMDBApiKey -ErrorAction SilentlyContinue
+                If($ContinueToSearch -and $WorkingTitle){
+                    Write-Host ("{0} search for alternate movie title [{1}]{2} in IMDB..." -f $SearchCountlabel,$WorkingTitle,$YearLabel) -ForegroundColor Gray -NoNewline
+                    $IMDBMovieInfo = Get-ImdbTitle -Title $WorkingTitle @ParamHash -Api $IMDBApiKey -ErrorAction SilentlyContinue
                     If($IMDBMovieInfo){Write-Host ("Found {0}" -f $IMDBMovieInfo.Count)}Else{Write-Host "Found 0"}
                     If(!$Year){$Year = $IMDBMovieInfo.Year}
 
-                    Write-Host ("{0} search for alternate movie title [{1}]{2} in TMDB..." -f $SearchCountlabel,$AlternateTitle,$YearLabel) -ForegroundColor Gray -NoNewline
-                    $TMDBMovieInfo = Find-TMDBItem -Type Movie -SearchAction ByType -Title $AlternateTitle @ParamHash -ApiKey $TMDBApiKey -SelectFirst -ErrorAction SilentlyContinue
+                    Write-Host ("{0} search for alternate movie title [{1}]{2} in TMDB..." -f $SearchCountlabel,$WorkingTitle,$YearLabel) -ForegroundColor Gray -NoNewline
+                    $TMDBMovieInfo = Find-TMDBItem -Type Movie -SearchAction ByType -Title $WorkingTitle @ParamHash -ApiKey $TMDBApiKey -SelectFirst -ErrorAction SilentlyContinue
                     If($TMDBMovieInfo){Write-Host ("Found {0}" -f $TMDBMovieInfo.Count)}Else{Write-Host "Found 0"}
                     If(!$Year){$Year = (Get-Date $TMDBMovieInfo.ReleaseDate -Format yyyy -ErrorAction SilentlyContinue)}
 
                     $NoSpecialIMDBTitles = ($IMDBMovieInfo.Title -replace 'é','e' -replace "[^{\p{L}\p{Nd}\'}]+", " ").Normalize("FormD") -replace '\p{M}'
                     $NoSpecialTMDBTitles = ($TMDBMovieInfo.Title -replace 'é','e' -replace "[^{\p{L}\p{Nd}\'}]+", " ").Normalize("FormD") -replace '\p{M}'
 
-                    If(!$NoSpecialIMDBTitles -or !$NoSpecialTMDBTitles){
-                        Write-Host ("Movie information for [{0}]{1} is not available from IMDB or TMDB" -f $AlternateTitle,$YearLabel) -ForegroundColor Red
+                    If($RequireBoth -and (!$NoSpecialIMDBTitles -and !$NoSpecialTMDBTitles) ){
+                        Write-Host ("Movie information for [{0}]{1} is not available from ") -NoNewline -ForegroundColor Red
+                        If($NoSpecialIMDBTitles){
+                            Write-Host ("IMDB") -NoNewline -ForegroundColor Green
+                        }Else{
+                            Write-Host ("IMDB") -NoNewline -ForegroundColor Red
+                        }
+                        Write-Host (" and/or ") -NoNewline -ForegroundColor Red
+                        
+                        If($NoSpecialTMDBTitles){
+                            Write-Host ("TMDB") -NoNewline -ForegroundColor Green
+                        }Else{
+                            Write-Host ("TMDB") -NoNewline -ForegroundColor Red
+                        }
+                        Write-Host (". Both are required!") -ForegroundColor Red
                         $ContinueToSearch = $true
+                    }
+                    ElseIf(!$RequireBoth -and ($NoSpecialIMDBTitles -or $NoSpecialTMDBTitles)){
+                        If($NoSpecialIMDBTitles){
+                             Write-Host ("Movie information was found from IMDB [{0}]{1}" -f $NoSpecialIMDBTitles,$YearLabel) -ForegroundColor Gray
+                             $MatchedMovieTitle = $IMDBMovieInfo.Title
+                        }
+                        If($NoSpecialTMDBTitles){
+                             $MatchedMovieTitle = $TMDBMovieInfo.Title
+                             Write-Host ("Movie information was found from TMDB [{0}]{1}" -f $NoSpecialTMDBTitles,$YearLabel) -ForegroundColor Gray
+                        }
+                        $ContinueToSearch = $false
                     }
                     ElseIf($NoSpecialIMDBTitles -ne $NoSpecialTMDBTitles){
                         If(( (Convert-WordToNumber $NoSpecialIMDBTitles) -eq (Convert-WordToNumber $NoSpecialTMDBTitles) ) -or ( (Convert-NumberToWord $NoSpecialIMDBTitles) -eq (Convert-NumberToWord $NoSpecialTMDBTitles) )){
@@ -189,72 +187,91 @@ Function Search-MovieTitle{
             }
 
             $Count = $Count + 1
-        } #end alternate title search
+        } #end title search
 
     }
     End{
         #if a title was found and boolean return not specified
-        If(!$ReturnBoolean -and $MatchedMovieTitle){
+        If(!$ReturnBoolean -and ($IMDBMovieInfo -or $TMDBMovieInfo)){
             $returnObjects = @()
 
             $returnObject = New-Object System.Object
-            $returnObject | Add-Member -Type NoteProperty -Name Title -Value $IMDBMovieInfo.title
-            $returnObject | Add-Member -Type NoteProperty -Name Year -Value $IMDBMovieInfo.year
-            $returnObject | Add-Member -Type NoteProperty -Name Rated -Value $IMDBMovieInfo.Rated
-            $returnObject | Add-Member -Type NoteProperty -Name Released -Value $IMDBMovieInfo.Released
-            $returnObject | Add-Member -Type NoteProperty -Name Runtime -Value $IMDBMovieInfo.Runtime
-            $returnObject | Add-Member -Type NoteProperty -Name Genre -Value $IMDBMovieInfo.Genre
-            $returnObject | Add-Member -Type NoteProperty -Name Director -Value $IMDBMovieInfo.Director
-            $returnObject | Add-Member -Type NoteProperty -Name Writer  -Value $IMDBMovieInfo.Writer
-            $returnObject | Add-Member -Type NoteProperty -Name Actors -Value $IMDBMovieInfo.Actors
-            $returnObject | Add-Member -Type NoteProperty -Name Plot -Value $IMDBMovieInfo.Plot
-            $returnObject | Add-Member -Type NoteProperty -Name Language -Value $IMDBMovieInfo.Language
-            $returnObject | Add-Member -Type NoteProperty -Name Country -Value $IMDBMovieInfo.Country
-            $returnObject | Add-Member -Type NoteProperty -Name Awards -Value $IMDBMovieInfo.Awards
-            $returnObject | Add-Member -Type NoteProperty -Name Poster  -Value $IMDBMovieInfo.Poster
-            $returnObject | Add-Member -Type NoteProperty -Name Ratings  -Value $IMDBMovieInfo.Ratings
-            $returnObject | Add-Member -Type NoteProperty -Name Metascore -Value $IMDBMovieInfo.Metascore
-            $returnObject | Add-Member -Type NoteProperty -Name imdbRating -Value $IMDBMovieInfo.imdbRating
-            $returnObject | Add-Member -Type NoteProperty -Name imdbVotes  -Value $IMDBMovieInfo.imdbVotes
-            $returnObject | Add-Member -Type NoteProperty -Name imdbID  -Value $IMDBMovieInfo.imdbID
-            $returnObject | Add-Member -Type NoteProperty -Name Type  -Value $IMDBMovieInfo.Type
-            $returnObject | Add-Member -Type NoteProperty -Name DVD  -Value $IMDBMovieInfo.DVD
-            $returnObject | Add-Member -Type NoteProperty -Name BoxOffice  -Value $IMDBMovieInfo.BoxOffice
-            $returnObject | Add-Member -Type NoteProperty -Name Production -Value $IMDBMovieInfo.Production
-            $returnObject | Add-Member -Type NoteProperty -Name Website  -Value $IMDBMovieInfo.Website
+            If($IMDBMovieInfo){
+                $returnObject | Add-Member -Type NoteProperty -Name Title -Value $IMDBMovieInfo.title
+                $returnObject | Add-Member -Type NoteProperty -Name Year -Value $IMDBMovieInfo.year
+                $returnObject | Add-Member -Type NoteProperty -Name Rated -Value $IMDBMovieInfo.Rated
+                $returnObject | Add-Member -Type NoteProperty -Name Released -Value $IMDBMovieInfo.Released
+                $returnObject | Add-Member -Type NoteProperty -Name Runtime -Value $IMDBMovieInfo.Runtime
+                $returnObject | Add-Member -Type NoteProperty -Name Director -Value $IMDBMovieInfo.Director
+                $returnObject | Add-Member -Type NoteProperty -Name Writer  -Value $IMDBMovieInfo.Writer
+                $returnObject | Add-Member -Type NoteProperty -Name Actors -Value $IMDBMovieInfo.Actors
+                $returnObject | Add-Member -Type NoteProperty -Name Plot -Value $IMDBMovieInfo.Plot
+                $returnObject | Add-Member -Type NoteProperty -Name Language -Value $IMDBMovieInfo.Language
+                $returnObject | Add-Member -Type NoteProperty -Name Country -Value $IMDBMovieInfo.Country 
+                $returnObject | Add-Member -Type NoteProperty -Name Awards -Value $IMDBMovieInfo.Awards
+                $returnObject | Add-Member -Type NoteProperty -Name Poster  -Value $IMDBMovieInfo.Poster
+                $returnObject | Add-Member -Type NoteProperty -Name Ratings  -Value $IMDBMovieInfo.Ratings
+                $returnObject | Add-Member -Type NoteProperty -Name Metascore -Value $IMDBMovieInfo.Metascore
+                $returnObject | Add-Member -Type NoteProperty -Name imdbRating -Value $IMDBMovieInfo.imdbRating 
+                $returnObject | Add-Member -Type NoteProperty -Name imdbVotes  -Value $IMDBMovieInfo.imdbVotes
+                $returnObject | Add-Member -Type NoteProperty -Name imdbID  -Value $IMDBMovieInfo.imdbID
+                $returnObject | Add-Member -Type NoteProperty -Name Type  -Value $IMDBMovieInfo.Type
+                $returnObject | Add-Member -Type NoteProperty -Name DVD  -Value $IMDBMovieInfo.DVD
+                $returnObject | Add-Member -Type NoteProperty -Name BoxOffice  -Value $IMDBMovieInfo.BoxOffice
+                $returnObject | Add-Member -Type NoteProperty -Name Production -Value $IMDBMovieInfo.Production
+                $returnObject | Add-Member -Type NoteProperty -Name Website  -Value $IMDBMovieInfo.Website
+                If(!$TMDBMovieInfo){
+                    $returnObject | Add-Member -Type NoteProperty -Name Genres -Value ($IMDBMovieInfo.Genre -split ',').Trim()
+                }
+            }
+            If($TMDBMovieInfo){
+                #If IMDB does not return data, use TMDB's data
+                If(!$IMDBMovieInfo){
+                    $returnObject | Add-Member -Type NoteProperty -Name Title -Value $TMDBMovieInfo.title
+                    $returnObject | Add-Member -Type NoteProperty -Name Poster -Value $TMDBMovieInfo.Poster
+                    $returnObject | Add-Member -Type NoteProperty -Name Language -Value $TMDBMovieInfo.Language
+                    $returnObject | Add-Member -Type NoteProperty -Name Year -Value $TMDBMovieInfo.year
+                }
+                $returnObject | Add-Member -Type NoteProperty -Name TotalVotes -Value $TMDBMovieInfo.TotalVotes
+                $returnObject | Add-Member -Type NoteProperty -Name tmdbID -Value $TMDBMovieInfo.tmdbID
+                $returnObject | Add-Member -Type NoteProperty -Name Video -Value $TMDBMovieInfo.Video
+                $returnObject | Add-Member -Type NoteProperty -Name VoteAverage -Value $TMDBMovieInfo.VoteAverage
+                
+                $returnObject | Add-Member -Type NoteProperty -Name Popularity -Value $TMDBMovieInfo.popularity
+                
+                $returnObject | Add-Member -Type NoteProperty -Name OriginalTitle -Value $TMDBMovieInfo.OriginalTitle
+                $returnObject | Add-Member -Type NoteProperty -Name Genres -Value ($TMDBMovieInfo.Genres -split ',').Trim()
+                $returnObject | Add-Member -Type NoteProperty -Name Backdrop -Value $TMDBMovieInfo.Backdrop
+                $returnObject | Add-Member -Type NoteProperty -Name Adult -Value $TMDBMovieInfo.Adult
+                $returnObject | Add-Member -Type NoteProperty -Name Overview -Value $TMDBMovieInfo.overview
+                $returnObject | Add-Member -Type NoteProperty -Name ReleaseDate -Value $TMDBMovieInfo.ReleaseDate
+                
+            }
 
-            $returnObject | Add-Member -Type NoteProperty -Name TotalVotes -Value $TMDBMovieInfo.TotalVotes
-            $returnObject | Add-Member -Type NoteProperty -Name tmdbID -Value $TMDBMovieInfo.tmdbID
-            $returnObject | Add-Member -Type NoteProperty -Name Video -Value $TMDBMovieInfo.Video
-            $returnObject | Add-Member -Type NoteProperty -Name VoteAverage -Value $TMDBMovieInfo.VoteAverage
-            #$returnObject | Add-Member -Type NoteProperty -Name Title -Value $TMDBMovieInfo.title
-            $returnObject | Add-Member -Type NoteProperty -Name Popularity -Value $TMDBMovieInfo.popularity
-            #$returnObject | Add-Member -Type NoteProperty -Name Poster -Value $TMDBMovieInfo.Poster
-            #$returnObject | Add-Member -Type NoteProperty -Name Language -Value $TMDBMovieInfo.Language
-            $returnObject | Add-Member -Type NoteProperty -Name OriginalTitle -Value $TMDBMovieInfo.OriginalTitle
-            $returnObject | Add-Member -Type NoteProperty -Name Genres -Value $TMDBMovieInfo.Genres
-            $returnObject | Add-Member -Type NoteProperty -Name Backdrop -Value $TMDBMovieInfo.Backdrop
-            $returnObject | Add-Member -Type NoteProperty -Name Adult -Value $TMDBMovieInfo.Adult
-            $returnObject | Add-Member -Type NoteProperty -Name Overview -Value $TMDBMovieInfo.overview
-            $returnObject | Add-Member -Type NoteProperty -Name ReleaseDate -Value $TMDBMovieInfo.ReleaseDate
+            #combine genres 
+            If($IMDBMovieInfo.Genre -and $TMDBMovieInfo.Genres){
+                $returnObject.Genres = ($IMDBMovieInfo.Genre -split ',').Trim() + ($TMDBMovieInfo.Genres -split ',').Trim() | Select -Unique
+            }
+
             $returnObjects += $returnObject
 
             return $returnObjects
         }
-
-        #if a title was found and boolean return WAS specified
-        ElseIf($ReturnBoolean -and $MatchedMovieTitle){
+        #if both title was found and boolean return WAS specified
+        ElseIf($RequireBoth -and $IMDBMovieInfo -and $TMDBMovieInfo){
             return $true
         }
-
-        #if a title was NOT found and boolean return WAS specified
-        ElseIf($ReturnBoolean -and !$MatchedMovieTitle){
+        #if both title was not found and boolean return WAS specified
+        ElseIf($RequireBoth -and (!$IMDBMovieInfo -or !$TMDBMovieInfo)){
             return $false
         }
-
-        #all else return null
+        #if a title was found and boolean return WAS specified
+        ElseIf($IMDBMovieInfo -or $TMDBMovieInfo){
+            return $true
+        }
+        #if a title was NOT found and boolean return WAS specified
         Else{
-            return $null
+            return $false
         }
     }
 }
