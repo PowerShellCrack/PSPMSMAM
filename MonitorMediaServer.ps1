@@ -90,6 +90,9 @@ Function Resolve-ActualPath{
         [string]$WorkingPath,
         [Switch]$Parent
     )
+    ## Get the name of this function
+    [string]${CmdletName} = $MyInvocation.MyCommand
+
     Write-Verbose ("Attempting to resolve filename: {0}" -f $FileName)
     If(Resolve-Path $FileName -ErrorAction SilentlyContinue){
         $FullPath = Resolve-Path $FileName
@@ -169,21 +172,23 @@ $ServicesToCheck = $GlobalSettings.ServiceCheck.service
 $WebsToCheck = $GlobalSettings.WebCheck.Web
 $ProcessesToCheck = $GlobalSettings.ProcessCheck.process
 
-[string]$RadarrConfigFile = $GlobalSettings.SourceConfigs.Config | Where-Object Id -eq 'Radarr' | Select-Object -ExpandProperty ConfigFile
+[string]$RadarrConfigFile = $GlobalSettings.SourceConfigs.Config | Where Id -eq 'Radarr' | Select -ExpandProperty ConfigFile
 
 # PARSE PLEX CONFIG FILE
 #=================================================
-[string]$PlexConfigFile = $GlobalSettings.SourceConfigs.Config | Where-Object Id -eq 'Plex' | Select-Object -ExpandProperty ConfigFile
+[string]$PlexConfigFile = $GlobalSettings.SourceConfigs.Config | Where Id -eq 'Plex' | Select -ExpandProperty ConfigFile
 [Xml.XmlDocument]$PlexXMLContent = (Get-Content "$ConfigPath\$PlexConfigFile" -ReadCount 0) -replace "&","&amp;"
 
-## Variables: Script Info
+## Variables: Toolkit Name
 [string]$PlexScriptName = $PlexXMLContent.PlexConfigs.PlexScriptConfigs.Name
 [string]$PlexScriptFriendlyName = $PlexXMLContent.PlexConfigs.PlexScriptConfigs.FriendlyName
-[version]$PlexScriptVersion = [version]$PlexXMLContent.PlexConfigs.PlexScriptConfigs.Version
 
+## Variables: Script Info
+[version]$PlexScriptVersion = [version]$PlexXMLContent.PlexConfigs.PlexScriptConfigs.Version
 #generate new guid if version change: new-guid
 [guid]$PlexScriptGUID = $PlexXMLContent.PlexConfigs.PlexScriptConfigs.GUID
 [string]$plexScriptDate = $PlexXMLContent.PlexConfigs.PlexScriptConfigs.Date
+[hashtable]$plexScriptParameters = $PSBoundParameters
 [string]$PlexURLType = $PlexXMLContent.PlexConfigs.UseURLType
 
 switch($PlexURLType){
@@ -205,12 +210,9 @@ $PlexAuthToken = Get-PlexAuthToken -PlexUsername $PlexUser -PlexPassword $PlexPa
 [Xml.XmlElement]$RadarrSettings = $RadarrXMLContent.RadarrAutomation.GlobalSettings
 [Xml.XmlElement]$NewMovieConfigs = $RadarrXMLContent.RadarrAutomation.MovieConfigs
 
-#Global variables are used with API
 [string]$Global:RadarrURL = $RadarrConfigs.InternalURL
 [string]$Global:RadarrPort = $RadarrConfigs.Port
 [string]$Global:RadarrAPIkey = $RadarrConfigs.API
-
-
 [string]$OMDBAPI = $RadarrSettings.OMDBAPI
 [string]$TMDBAPI = $RadarrSettings.TMDBAPI
 [string[]]$VideoExtensions = $RadarrSettings.VideoExtensions.ext -split ','
@@ -226,9 +228,9 @@ $PlexAuthToken = Get-PlexAuthToken -PlexUsername $PlexUser -PlexPassword $PlexPa
 [string]$MovieRequestsPath = $NewMovieConfigs.MovieRequestedMovePath
 [string]$DownloadedMoviePath = $NewMovieConfigs.DownloadedMoviePath
 
-# PARSE TAUTULLI CONFIG FILE - FUTURE USE
+# PARSE TAUTULLI CONFIG FILE
 #=================================================
-[string]$TautulliConfigFile = $GlobalSettings.SourceConfigs.Config | Where-Object Id -eq 'Tautulli' | Select-Object -ExpandProperty ConfigFile
+[string]$TautulliConfigFile = $GlobalSettings.SourceConfigs.Config | Where Id -eq 'Tautulli' | Select -ExpandProperty ConfigFile
 [Xml.XmlDocument]$TautulliXMLContent = (Get-Content "$ConfigPath\$TautulliConfigFile" -ReadCount 0) -replace "&","&amp;"
 [Xml.XmlElement]$TautulliConfigs = $TautulliXMLContent.TautulliConfigs
 [Xml.XmlElement]$TautulliScriptConfigs = $TautulliXMLContent.TautulliConfigs.TautulliScriptConfigs
@@ -243,7 +245,7 @@ Foreach($service in $ServicesToCheck)
 {
     Write-Host ("Checking service [{0}] status..." -f $service.FriendlyName) -NoNewline
     $SystemService = Get-Service -Name $service.Name -ErrorAction SilentlyContinue
-
+    
     If($SystemService)
     {
         If($SystemService.Status -eq $service.state){
@@ -277,17 +279,17 @@ Foreach($Web in $WebsToCheck)
 {
     switch($Web.ConnectType)
     {
-
+    
         'xmlRpc' {
             #$responselist = Invoke-RPCMethod -Uri "$SeedboxUrl/rutorrent/plugins/httprpc/action.php" -RequestBody $request -Credential $credentials
             $Cmdlet = 'Invoke-RPCMethod'
             If($Web.Config){
-
+                
                 If($WebConfig = Resolve-ActualPath -FileName $Web.config -WorkingPath $scriptRoot -ErrorAction SilentlyContinue){
                     [Xml.XmlDocument]$WebXMLConfigs = (Get-Content $WebConfig.Path -ReadCount 0) -replace "&","&amp;"
                     [Xml.XmlElement]$WebConfigs = $WebXMLConfigs.($Web.Name + 'Configs')
                     $WebParams = @{Uri = ($WebConfigs.ExternalURL + '/' + $WebConfigs.RPCPath)}
-
+                    
                     #Get request body
                     $bytes = [System.Text.Encoding]::Unicode.GetBytes($WebConfigs.RequestBody.'#cdata-section')
                     $request = [System.Text.Encoding]::ASCII.GetString($bytes)
@@ -295,7 +297,7 @@ Foreach($Web in $WebsToCheck)
 
 
                     If($WebConfigs.Credentials){
-
+                
                         If($CredFile = Resolve-ActualPath -FileName $WebConfigs.Credentials -WorkingPath $scriptRoot -ErrorAction SilentlyContinue){
                             [System.Management.Automation.PSCredential]$Creds = Import-Clixml $CredFile.path
                             if ($Creds -ne [System.Management.Automation.PSCredential]::Empty) {
@@ -310,14 +312,14 @@ Foreach($Web in $WebsToCheck)
         'API'    {
             $Cmdlet = 'Invoke-WebRequest'
             If($Web.Config){
-
+                
                 If($WebConfig = Resolve-ActualPath -FileName $Web.config -WorkingPath $scriptRoot -ErrorAction SilentlyContinue){
                     [Xml.XmlDocument]$WebXMLConfigs = (Get-Content $WebConfig.Path -ReadCount 0) -replace "&","&amp;"
                     [Xml.XmlElement]$WebConfigs = $WebXMLConfigs.($Web.Name + 'Configs')
                     $WebParams = @{Uri = $WebConfigs.ExternalURL}
 
                     If($WebConfigs.Credentials){
-
+                
                         If($CredFile = Resolve-ActualPath -FileName $WebConfigs.Credentials -WorkingPath $scriptRoot -ErrorAction SilentlyContinue){
                             [System.Management.Automation.PSCredential]$Creds = Import-Clixml $CredFile.Path
                             if ($Creds -ne [System.Management.Automation.PSCredential]::Empty) {
@@ -333,7 +335,7 @@ Foreach($Web in $WebsToCheck)
             $Cmdlet = 'Invoke-WebRequest'
             $WebParams = @{Uri = $Web.uri}
             If($Web.Credentials){
-
+                
                 If($CredFile = Resolve-ActualPath -FileName $Web.Credentials -WorkingPath $scriptRoot -ErrorAction SilentlyContinue){
                     [System.Management.Automation.PSCredential]$Creds = Import-Clixml $CredFile.Path
                     if ($Creds -ne [System.Management.Automation.PSCredential]::Empty) {
@@ -341,12 +343,12 @@ Foreach($Web in $WebsToCheck)
                     }
                 }
             }
-
+            
         }
 
 
     }
-
+    
     $ignoredCodes = @()
     If($Web.IgnoreCodes){
         $ignoredCodes += ($Web.IgnoreCodes).split(',')
@@ -392,7 +394,7 @@ Foreach($genre in $MoviesGenreMappings){
     #$FolderPath = Get-ChildItem $MoviesDir | Where Name -eq $genre.BindingFolder | Select -First 1
     $FolderPath = Join-Path -Path $MoviesDir -ChildPath $genre.BindingFolder
     If($FolderPath){
-        $MoviesGenreMappings | Where-Object Tag -eq $genre.Tag | Add-Member -MemberType NoteProperty -Name 'FolderPath' -Value $FolderPath -Force
+        $MoviesGenreMappings | Where Tag -eq $genre.Tag | Add-Member -MemberType NoteProperty -Name 'FolderPath' -Value $FolderPath -Force
     }
 }
 
@@ -426,7 +428,7 @@ $NewMovies = $DownloadedMovies + $RequestedMovies
 
 $NewMovieInfoMappings = @()
 
-## CHECK FOR NEW MOVIES
+## CHECK FOR NEW MOVIES 
 ##---------------------
 #$NewMovie = $NewMovies[0]
 Foreach($NewMovie in $NewMovies)
@@ -438,8 +440,8 @@ Foreach($NewMovie in $NewMovies)
     $FileInfo.Size = $NewMovie.Length
     Write-Host ("---------------------------------------------------------") -ForegroundColor Cyan
     Write-Host ("Parsing movie from file name [{0}]... " -f $NewMovie.name) -ForegroundColor Cyan
-    $MovieInfo = ConvertTo-MovieData -Value $NewMovie.Name
-
+    $MovieInfo = ConvertTo-MovieData -Value $NewMovie.Name -FormatTitleCase
+    
     <#
     If($NewMovie.movieFile.path){
         Write-Host ("existing file path [{0}]... " -f $NewMovie.movieFile.path)
@@ -456,7 +458,7 @@ Foreach($NewMovie in $NewMovies)
         $CurrentLocation
     }
     #>
-
+    
     $MultipleObjectsParams = @{
         Object1 = $MovieInfo
         Object2 = $FileInfo
@@ -465,9 +467,9 @@ Foreach($NewMovie in $NewMovies)
     #$MovieInfo = ConvertTo-MovieData -Value ($NewMovies | Where name -like "*die.another.day*").Name
     #$MovieInfo = ConvertTo-MovieData -Value ($NewMovies | Where name -like "*Venom.Let.There.Be.Carnage*").Name
     $OnlineMovie = Search-MovieTitle -Title $MovieInfo.Title -Year $MovieInfo.Year -IMDBApiKey $OMDBAPI -TMDBApiKey $TMDBAPI
-
-    #grab movie details
-
+    
+    #grab movie details and
+    
     If($OnlineMovie){
 
         $MovieDetails = "" | Select OnlineimdbID,OnlinetmdbID,OnlinePoster
@@ -551,7 +553,7 @@ Foreach($NewMovie in $NewMovies)
                 Else{
                     Write-Host 'No' -ForegroundColor Red
                 }
-
+                
             }
             Else{
                 Write-Host ("    Does movie property [{0}] with value of [{1}] equal [{2}]? " -f $Property,($PropertyValue | Trim-Length 125 -Traildots), $CompareValue) -NoNewline
@@ -568,11 +570,11 @@ Foreach($NewMovie in $NewMovies)
 
 
     }#end genre mapping loop
-
+   
     #If Mapping does not exist, build default mapping to request folder.
     If($MatchedMapping)
-    {
-        Write-Host ("[{0}] will be mapped to [{1}]" -f $UseObject.title,$MatchedMapping.FolderPath) -ForegroundColor Green
+    {    
+        Write-Host ("[{0}] will be mapped to [{1}]" -f $UseObject.title,$MatchedMapping.FolderPath) -ForegroundColor Green 
     }
     Else{
         Write-Host ("Unable to map [{0}] to a folder location" -f $UseObject.title) -ForegroundColor White -BackgroundColor Red
@@ -587,12 +589,12 @@ Foreach($NewMovie in $NewMovies)
 
 #$NewMovieInfoMappings
 
-## GET RADARR ACTIONS
+## GET RADARR ACTIONS 
 ##---------------------
 If($NewMovieInfoMappings.Count -gt 0)
 {
     $NewRadarrMovieActions = @()
-
+    
     #TEST $NewRadarrMovie = $NewMovieInfoMappings[0]
     #TEST $NewRadarrMovie = $NewMovieInfoMappings[1]
     #TEST $NewRadarrMovie = $NewMovieInfoMappings[2]
@@ -601,10 +603,10 @@ If($NewMovieInfoMappings.Count -gt 0)
     {
         #create radarr object
         $MovieJob = "" | Select RadarrMovieStatus,FileAction,RadarrAction,RadarrFilePath,RadarrFileStatus,RadarrNewFolderPath,SupportFileAction,SupportFilesPath
-
-        Write-Host ("----------------------------------------------------------") -ForegroundColor Cyan
+            
+        Write-Host ("----------------------------------------------------------") -ForegroundColor Cyan    
         Write-Host ("Determining actions for new movie [{0}]... " -f $NewRadarrMovie.Title) -ForegroundColor Cyan
-
+            
         #Assume if on srt file exists; its engligh unless it named otherwise
         $SupportFiles = @()
         $SupportFiles = Get-ChildItem -LiteralPath $NewRadarrMovie.SourcePath | Where-Object {$_.PSIsContainer -eq $false -and $_.Extension -in $VideoSupportFiles}
@@ -615,11 +617,11 @@ If($NewMovieInfoMappings.Count -gt 0)
         $MovieJob.SupportFilesPath = $SupportFiles.FullName
 
         #Remove any other files that are not video related
-        Get-childitem -LiteralPath $workingpath -Recurse |
+        Get-childitem -LiteralPath $workingpath -Recurse | 
         Where-Object {$_.PSIsContainer -eq $false -and $_.BaseName -notin $SupportFiles.BaseName -and $_.Extension -notin $VideoExtensions -and `
-                                                    ($_.Extension -notin $VideoSupportFiles -or $_.BaseName -notmatch $SupportedLanguages)} |
-                                                    Remove-Item -Force -ErrorAction SilentlyContinue -WhatIf
-
+                                                    ($_.Extension -notin $VideoSupportFiles -or $_.BaseName -notmatch $SupportedLanguages)} | 
+                                                    Remove-Item -Force -ErrorAction SilentlyContinue
+            
         #TEST $ExistingRadarrMovies | Where {($_.title -like '*Shang*')}
         Write-Host ("    Does movie entry [{0}] already exist in Radarr? " -f $NewRadarrMovie.Title) -NoNewline
         $MovieInRadarr = $ExistingRadarrMovies | Where {($_.title -eq $NewRadarrMovie.Title -or $_.sortTitle -eq $NewRadarrMovie.Title) -and $_.year -eq $NewRadarrMovie.Year}
@@ -636,7 +638,7 @@ If($NewMovieInfoMappings.Count -gt 0)
             Write-Host ("    Is there a movie file that exist with Radarr entry [{0}]? " -f $NewRadarrMovie.Title) -NoNewline
             If($MovieInRadarr.movieFile.Path){
                 $MovieJob.RadarrFilePath = $MovieInRadarr.movieFile.Path
-
+                
                 If(Test-Path $MovieInRadarr.movieFile.Path){
                    Write-Host 'Yes' -ForegroundColor Green
                 }
@@ -651,9 +653,9 @@ If($NewMovieInfoMappings.Count -gt 0)
                 Write-Host 'No' -ForegroundColor Red
                 $MovieJob.FileAction = 'Move'
                 $MovieJob.RadarrAction = 'Update'
-                $MovieJob.RadarrFileStatus = 'Missing'
+                $MovieJob.RadarrFileStatus = 'Missing'   
             }
-
+        
             If($MovieJob.RadarrFileStatus -ne 'Missing')
             {
                 Write-Host ("    Is the movie file path in the right location? [{0}]? " -f $NewRadarrMovie.FolderPath) -NoNewline
@@ -666,9 +668,9 @@ If($NewMovieInfoMappings.Count -gt 0)
                     $MovieJob.RadarrAction = 'Update'
                     $MovieJob.RadarrFilePath = (Join-path $NewRadarrMovie.FolderPath -ChildPath $NewRadarrMovie.FileName)
                 }
-
+            
                 Write-Host ("    Is there a language file that exist with Radarr entry [{0}]? " -f $NewRadarrMovie.Title) -NoNewline
-                $RadarrSupportFile = Get-ChildItem -LiteralPath $MovieInRadarr.movieFile.Path | Where-Object {$_.PSIsContainer -eq $false -and $_.Extension -in $VideoSupportFiles}
+                $RadarrSupportFile = Get-childitem -LiteralPath $MovieInRadarr.movieFile.Path | Where-Object {$_.PSIsContainer -eq $false -and $_.Extension -in $VideoSupportFiles}
                 If($RadarrSupportFile.count -gt 0){
                     Write-Host 'Yes' -ForegroundColor Green
                     $MovieJob.SupportFilesPath = $RadarrSupportFile.FullName
@@ -678,8 +680,8 @@ If($NewMovieInfoMappings.Count -gt 0)
                     Write-Host 'No' -ForegroundColor Red
                     $MovieJob.SupportFileAction = 'Move'
                 }
-
-
+        
+            
                 Write-Host ("    Is the movie file that exist in Radarr the same [{0}]? " -f $MovieInRadarr.movieFile.relativePath) -NoNewline
                 If($MovieInRadarr.movieFile.size -eq $NewRadarrMovie.FileSize){
                     Write-Host ('size is the same [{0}]. Will delete new movie file' -f $MovieInRadarr.movieFile.size) -ForegroundColor Red
@@ -711,11 +713,11 @@ If($NewMovieInfoMappings.Count -gt 0)
             $MovieJob.RadarrAction = 'New'
             $MovieJob.RadarrNewFolderPath = Join-path $NewRadarrMovie.FolderPath -ChildPath $NewRadarrMovie.SimpleTitle
         }
+        
 
-
-        #build new object that combines mappings and Radarr actions
+        #build new obecjt that combines mappings and radarr actions
         $NewRadarrMovieActions += Merge-MultipleObjects $NewRadarrMovie $MovieJob
-        } #End loop
+        } #End loop   
 }
 
 #$NewRadarrMovieActions
@@ -744,14 +746,14 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
     #$NewMovie = $NewRadarrMovieActions[1]
     Foreach($NewMovie in $NewRadarrMovieActions)
     {
-
-        Write-Host ("----------------------------------------------------------") -ForegroundColor Cyan
+        $SourceFolder = Split-Path $NewMovie.SourceFilePath -Parent
+        Write-Host ("----------------------------------------------------------") -ForegroundColor Cyan    
         Write-Host ("Processing new movie [{0}]... " -f $NewMovie.Title) -ForegroundColor Cyan
 
         $DestinationPath = (Join-Path $NewMovie.RadarrNewFolderPath -ChildPath $NewMovie.FileName)
         $MovieInRadarr = $ExistingRadarrMovies | Where {($_.title -eq $NewMovie.Title -or $_.sortTitle -eq $NewMovie.Title) -and $_.year -eq $NewMovie.Year}
-
-
+        
+        
         If($NewMovie.RadarrAction -eq 'Update' -and $NewMovie.RadarrFileStatus -ne 'Missing'){
             New-Item $NewMovie.RadarrFilePath -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
         }
@@ -760,19 +762,19 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
             If( (Split-Path $NewMovie.RadarrFilePath -Parent) -ne $NewMovie.RadarrNewFolderPath){
                 #delete the entire folder?
                 If(Test-Path $NewMovie.RadarrFilePath){
-                    Get-Item (Split-Path $NewMovie.RadarrFilePath -Parent) | Remove-Item -Recurse -Force -Confirm
+                    Get-Item (Split-Path $NewMovie.RadarrFilePath -Parent) | Remove-Item -Recurse -Force
                 }
-
+            
             }
         }
 
         Switch($NewMovie.FileAction){
-            'Move'   {
-                        Write-Host ("Moving movie file [{0}] to [{1}]..." -f $NewMovie.SourceFileName, $NewMovie.RadarrNewFolderPath) -NoNewline
+            'Move'   {  
+                        Write-Host ("Moving movie file [{0}] to [{1}]..." -f $NewMovie.SourceFileName, $NewMovie.RadarrNewFolderPath) -NoNewline  
                         Try{
                             New-Item $NewMovie.RadarrNewFolderPath -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
                             Move-Item -LiteralPath $NewMovie.SourceFilePath -Destination $DestinationPath -Force | Out-Null
-                            Write-Host ('Done. Renamed file to [{0}]' -f $NewMovie.FileName) -ForegroundColor Green
+                            Write-Host ('Done. Renamed file to [{0}]' -f $NewMovie.FileName) -ForegroundColor Green    
                         }Catch{
                             write-host ("Failed: {0}" -f $_.Exception.Message) -ForegroundColor Red
                             Continue
@@ -780,7 +782,7 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
             }
 
             'Delete' {
-                        Get-Item -LiteralPath $NewMovie.SourcePath | Remove-Item -Recurse -Force -Confirm
+                        Get-Item -LiteralPath $NewMovie.SourcePath | Remove-Item -Recurse -Force
             }
 
         } #end file actions
@@ -794,9 +796,9 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
             'Move' {
                         #$SupportFile = $NewMovie.SupportFilesPath[0]
                         If($NewMovie.SupportFilesPath.count -eq 1){
-
+                            
                             $FileName = Split-Path $NewMovie.SupportFilesPath -Leaf
-                            Write-Host ("Moving support file [{0}] to [{1}]..." -f $FileName, $NewMovie.RadarrNewFolderPath) -NoNewline
+                            Write-Host ("Moving support file [{0}] to [{1}]..." -f $FileName, $NewMovie.RadarrNewFolderPath) -NoNewline  
                             $ext = [System.IO.Path]::GetExtension($FileName)
                             If($FileName -match $SupportedLanguages){
                                 $SupportDestinationPath = $DestinationPath.replace($NewMovie.FileExtension,'') + '.' + $matches[0] + $ext
@@ -806,7 +808,7 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
                             $NewFilename = Split-Path $SupportDestinationPath -Leaf
                             Try{
                                 Move-Item -LiteralPath $NewMovie.SupportFilesPath -Destination $SupportDestinationPath -Force | Out-Null
-                                Write-Host ('Done. Renamed file to [{0}]' -f $NewFilename) -ForegroundColor Green
+                                Write-Host ('Done. Renamed file to [{0}]' -f $NewFilename) -ForegroundColor Green    
                             }Catch{
                                 write-host ("Failed: {0}" -f $_.Exception.Message) -ForegroundColor Red
                                 Continue
@@ -815,9 +817,9 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
                         Else{
                             Foreach($SupportFile in $NewMovie.SupportFilesPath){
                                 $FileName = Split-Path $SupportFile -Leaf
-                                Write-Host ("Moving support file [{0}] to [{1}]..." -f $FileName, $NewMovie.RadarrNewFolderPath) -NoNewline
+                                Write-Host ("Moving support file [{0}] to [{1}]..." -f $FileName, $NewMovie.RadarrNewFolderPath) -NoNewline  
                                 $ext = [System.IO.Path]::GetExtension($FileName)
-
+                                
                                 If($FileName -match $SupportedLanguages){
                                     $SupportDestinationPath = $DestinationPath.replace($NewMovie.FileExtension,'') + '.' + $matches[0] + $ext
                                 }Else{
@@ -826,13 +828,13 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
                                 $NewFilename = Split-Path $SupportDestinationPath -Leaf
                                 Try{
                                     Move-Item -LiteralPath $NewMovie.SupportFilesPath -Destination $SupportDestinationPath -Force | Out-Null
-                                    Write-Host ('Done. Renamed file to [{0}]' -f $NewFilename) -ForegroundColor Green
+                                    Write-Host ('Done. Renamed file to [{0}]' -f $NewFilename) -ForegroundColor Green    
                                 }Catch{
                                     write-host ("Failed: {0}" -f $_.Exception.Message) -ForegroundColor Red
                                     Continue
-                                }
+                                } 
                             }
-                        }
+                        }        
             }
 
         } #end support file actions
@@ -849,8 +851,8 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
                         Catch{
                             write-host ("Failed: {0}" -f $_.Exception.Message) -ForegroundColor Red
                             Continue
-                        }
-
+                        }     
+                
             }
 
             'Update' {
@@ -869,13 +871,21 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
 
         } #end radarr actions
 
+
+        #delete folder after processing:
+        Remove-Item -Path $SourceFolder -Force
+
     } #end loop
-
-    #delete all empty folders:
-    Get-ChildItem $DownloadedMoviePath -Recurse |
-            Where-Object -FilterScript {$_.PSIsContainer -eq $True} |
+    
+    #delete all empty folders in downloaded movie path:
+    Remove-EmptyDirs -Path $DownloadedMoviePath -Confirm
+    <#
+    Get-ChildItem -LiteralPath $DownloadedMoviePath -Recurse | 
+            Where-Object -FilterScript {$_.PSIsContainer -eq $True} | 
             Where-Object -FilterScript {($_.GetFiles().Count -eq 0) -and $_.GetDirectories().Count -eq 0} | Remove-Item -Confirm
-
+    #>
+    #delete all empty folders in requested movies:
+    Remove-EmptyDirs -Path $MovieRequestsPath -Confirm
 
     <#
     Send-PlexRecentlyAddedEMail -PlexToken $PlexAuthToken `
@@ -888,25 +898,20 @@ If($ProcessRequestedMovies -and $NewRadarrMovieActions.Count -gt 0)
 
 
 
-
-
-
-
-
 ## CHECK MOVIE VALIDITY
 ##---------------------
 
 #get all folders and count moview in each folder, find folder with more than one file
-$AllMovieFiles = Get-ChildItem -LiteralPath $MoviesDir -Recurse | Where {$_.Extension -in $VideoExtensions}
-$AllMovieCountPerFolder = Get-ChildItem -LiteralPath $MoviesDir -Recurse -Directory |
+$AllMovieFiles = Get-ChildItem -LiteralPath $MoviesDir -Recurse | Where {$_.Extension -in $VideoExtensions} 
+$AllMovieCountPerFolder = Get-ChildItem -LiteralPath $MoviesDir -Recurse -Directory | 
         Select-Object FullName, @{Name="FileCount";Expression={(Get-ChildItem $_.FullName -File | Where {$_.Extension -in $VideoExtensions} | Measure-Object).Count }}
 $MultipleMovieserFolder = $AllMovieCountPerFolder | Where-Object {$_.FullName -notmatch '' -and $_.FileCount -gt 1}
 
 #get title that does not have a movie file
 $missingMovieFiles = $ExistingRadarrMovies | Where {$_.hasFile -eq $false } | Select id,Title,Year,path,@{n="exists";e={[bool](Test-Path $_.path)}}
 
-<#TODO
-    Look to see if missing movies exist somewhere else.
+<#TODO 
+    Look to see if missing movies exist somewhere else. 
     If so,compare folder genre with movie genre and update/move movie to right path
 #>
 
@@ -916,14 +921,11 @@ $MovieYearDoesNotMatchPath = $ExistingRadarrMovies | Select id,Title,Year,path,@
                                                 @{n="PathYear";e={[regex]::match($_.path,'(19|20)[0-9][0-9]').value}},
                                                 @{n="YearMatchPath";e={If($_.Year -ne [regex]::match($_.path,'(19|20)[0-9][0-9]').value){$False}Else{$True}}} | Where {$_.YearMatchPath -eq $false}
 
-
-
-
 #find duplicate movies by imdb
 $duplicateImdbMovies = $ExistingRadarrMovies | Group-Object -Property imdbId | Where-Object Count -GT 1
 
-<#TODO
-    Look to see why there are duplicate tmdb movies.
+<#TODO 
+    Look to see why there are duplicate tmdb movies. 
     If multiple video files; determine the highest resoltion and delete all others and remove entry from radarr
 #>
 
@@ -931,7 +933,11 @@ $duplicateImdbMovies = $ExistingRadarrMovies | Group-Object -Property imdbId | W
 foreach($dupMovieIMDB in $duplicateImdbMovies)
 {
     #Since both moviews ar ehte same we can build the proper title of movie from first instance
-    $movieTitle = $dupMovieIMDB.Group.Title[0] + ' (' + $dupMovieIMDB.Group.Year[0] + ')' -replace "[^{\p{L}\p{Nd}\'}]+", " "
+    # ^ asserts position at start of the string
+    # \p{Ll} matches a lowercase letter that has an uppercase variant
+    # \p{Nd} matches a digit zero through nine in any script except ideographic scripts
+    # + Quantifier — Matches between one and unlimited times, as many times as possible, giving back as needed (greedy)
+    $movieTitle = $dupMovieIMDB.Group.Title[0] + ' (' + $dupMovieIMDB.Group.Year[0] + ')' -replace "[^{\p{L}\p{Nd}\(\)'}]+", " "
 
     $FilesToMove = $dupMovieIMDB.Group.moviefile
     Switch -regex ($FilesToMove.relativePath){
@@ -950,7 +956,7 @@ foreach($dupMovieIMDB in $duplicateImdbMovies)
         Foreach($dupmovie in $dupMovieIMDB.Group | Where {$_.moviefile.id -ne $KeepMovie.id}){
             Remove-Item $dupmovie.moviefile.Path -Force -ErrorAction SilentlyContinue | Out-Null
         }
-
+        
         #first remove all instances of movie in Radarr (due to duplicate entries)
         Remove-RadarrMovie -Id $dupMovieIMDB.Group.id[0]
 
@@ -961,18 +967,19 @@ foreach($dupMovieIMDB in $duplicateImdbMovies)
                     -tmdbID $dupMovieIMDB.Group.tmdbId[0] `
                     -PosterImage ($dupMovieIMDB.Group.images[0] | Where coverType -eq 'poster' | select -ExpandProperty remoteurl) `
                     -Path (Split-Path $KeepMovie.path -Parent) -SearchAfterImport
-    }Else{
+    }
+    Else{
         Write-host ("Imdb Movie paths do not match title: {0}" -f $movieTitle) -ForegroundColor Red
     }
 
-
+    
 }
 
 #find duplicate movies by tmdb
 $duplicateTmdbMovies = $ExistingRadarrMovies | Group-Object -Property tmdbId | Where-Object Count -GT 1
 
-<#
-    Look to see why there are duplicate tmdb movies.
+<# 
+    Look to see why there are duplicate tmdb movies. 
     If multiple video files; determine the highest resolution and delete all others and remove entry from radarr
 #>
 #TEST $dupMovieTMDB = $duplicateTmdbMovies[-1]
@@ -999,7 +1006,7 @@ foreach($dupMovieTMDB in $duplicateTmdbMovies)
         Foreach($dupmovie in $dupMovieTMDB.Group | Where {$_.moviefile.id -ne $KeepMovie.id}){
             Remove-Item $dupmovie.moviefile.Path -Force -ErrorAction SilentlyContinue | Out-Null
         }
-
+        
         #first remove all instances of movie in Radarr (due to duplicate entries)
         Remove-RadarrMovie -Id $dupMovieTMDB.Group.id[0]
 
@@ -1015,7 +1022,7 @@ foreach($dupMovieTMDB in $duplicateTmdbMovies)
         Write-host ("Tmdb Movie paths do not match title: {0}" -f $movieTitle) -ForegroundColor Red
     }
 
-
+    
 }
 
 
