@@ -43,7 +43,7 @@ function Remove-EmptyDirs {
         [switch] $VerifyNoEmpty
     )
     Begin{
-        if (-not (Test-Path -Path $Path -PathType Container)) { 
+        if (-not (Test-Path -LiteralPath $Path -PathType Container)) { 
             write-host "The specified path does not exist." -ForegroundColor Red
             break
         }
@@ -51,9 +51,9 @@ function Remove-EmptyDirs {
     Process{
         $FoundEmpty = $false
         Write-Host "Iterating '$Path'"
-        Get-ChildItem -Force -Recurse -Path $Path | Where-Object { $_.PSIsContainer } | ForEach-Object {  
+        Get-ChildItem -LiteralPath $Path -Force -Recurse | Where-Object { $_.PSIsContainer } | ForEach-Object {  
             if ($Find -or -not $Confirm) {   
-                if (-not (Get-ChildItem -Force $_.FullName)) {     
+                if (-not (Get-ChildItem -LiteralPath $_.FullName -Force )) {     
                     # Directory should be empty
                     $_.FullName + ' is empty'
                 } 
@@ -70,10 +70,10 @@ function Remove-EmptyDirs {
             }
             # This is the dangerous part
             elseif ($Confirm) {
-                if (-not (Get-ChildItem -Force $_.FullName)) {
+                if (-not (Get-ChildItem -LiteralPath $_.FullName -Force)) {
                     $FoundEmpty = $true
                     # Directory should be empty
-                    Remove-Item -Force $_.FullName
+                    Remove-Item -LiteralPath $_.FullName -Force
                     if (-not $?) { 
                         $message = "Error: $(Get-Date): Unable to delete $($_.FullName): $($Error[0].ToString))"
                         If($Log){$message | Out-File -Append $Log}
@@ -91,7 +91,7 @@ function Remove-EmptyDirs {
         }# end of ForEach-Object 
     }
     End{ 
-        return $FoundEmpty
+        #return $FoundEmpty
     }
 } # end of function Remove-EmptyDirs
 

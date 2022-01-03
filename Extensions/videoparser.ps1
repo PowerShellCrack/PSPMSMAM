@@ -579,10 +579,60 @@ Function Start-FFMPEGProcess {
 }
 
 
+Function Format-TitleCase{
+    #https://www.grammarcheck.net/capitalization-in-titles-101/
+    Param (
+        [Parameter(Mandatory=$true,Position=0)]
+        [string]$String,
+        [string[]]$ExcludeInnerWords = @('a','an','the','and','as','as if','as long as','at','but','by','even if','for','from','if','if only','in','into','like', `
+                                        'near','now that','nor','of','off','on','on top of','once','onto','or','out of','over','past','so','so that', `
+                                        'than','that','till','to','up','upon','with','when','yet')
+    )
+    
+    $RegexWordSearch = ($ExcludeInnerWords | Select -Unique | ForEach-Object {'\b' + $_ + '\b'}) -join '|'
+
+    <#
+    $String = "For WhoM tHe BEll Tolls"
+    $String = "The Boy Who Cried Wolf"
+    $String = "Married WITH CHildren"
+    $String = "For Whom The Bell Tolls"
+    $String = "The Boy Born TO Run"
+    $String = "To Kill A Mockingbird"
+    $String = "AS Time Goes by"
+    #>
+    $TitleCaseString = @()
+
+    #first break up all words
+    $WordArray = $String -split '\s+'
+    Foreach($Word in $WordArray){
+
+        If($Word -match $RegexWordSearch)
+        {
+            $TitleCaseString += $Word.Tolower()
+        }
+        Else{
+            #$TitleCaseString += (Get-Culture).TextInfo.ToTitleCase($Word.Tolower())
+            #a little quicker then using Get-culture cmdle
+            $TitleCaseString += $Word.Substring(0,1).ToUpper() + $Word.Substring(1).ToLower()
+        }
+       
+    }
+
+    #get last word of string and uppercase the first letter
+    $TitleCaseString[-1] = $TitleCaseString[-1].Substring(0,1).ToUpper() + $TitleCaseString[-1].Substring(1)
+
+    #join string back together
+    $TitleCaseWord = $TitleCaseString -join " "
+    
+    #captilize first lettter of string
+    $TitleCaseWord.Substring(0,1).ToUpper() + $TitleCaseWord.Substring(1)
+}
+
 Function ConvertTo-MovieData {
     Param (
         [Parameter(Mandatory=$true,Position=0)]
-        [string]$Value
+        [string]$Value,
+        [switch]$FormatTitleCase
     )
   
     $MovieName = $Value
@@ -594,7 +644,7 @@ Function ConvertTo-MovieData {
     $MatchVideoRes = "\b480p\b|\b720p\b|\b1080p\b|\b1440\b|\b2160p\b|\b4320p\b|\b2k\b|\b4k\b"
     Do {
         If($MovieName -match $MatchVideoRes){
-            $VideoRes = $Matches[0]
+            $VideoRes = $Matches[0].ToLower()
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null    
         }
@@ -636,6 +686,9 @@ Function ConvertTo-MovieData {
     Do {
         If($MovieName -match $MatchVideoVersion){
             $VideoVersion = $Matches[0]
+            If($FormatTitleCase){
+                $VideoVersion = Format-TitleCase -String $VideoVersion
+            }
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null
             }
@@ -664,8 +717,13 @@ Function ConvertTo-MovieData {
     }Until($MovieName -notmatch $MatchLeadingEndingSpecials)
 
     $MovieYear = $MovieYear.Trim()
+    
     $MovieTitle = $MovieName.replace('.',' ').Trim() -replace '\s+',' '
+    If($FormatTitleCase){
+        $MovieTitle = Format-TitleCase -String $MovieTitle
+    }
 
+    #Build movie name 
     If($MovieYear){
         $FullTitle = ($MovieTitle + ' (' + $MovieYear + ') ' + $VideoVersion + ' - ' + $VideoRes).replace('  ',' ')
         $SimpleTitle = ($MovieTitle + ' (' + $MovieYear + ')').Trim()

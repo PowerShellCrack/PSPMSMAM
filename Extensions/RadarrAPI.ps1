@@ -422,7 +422,12 @@ Function Remove-RadarrMovie{
 
         }
         Else{
-            Write-Host ("Movie with ID [{0}] does not exist in Radarr..." -f $Id) -ForegroundColor Yellow
+            If ($PSCmdlet.ParameterSetName -eq "Title") {
+                Write-Host ("Movie with Title [{0}] does not exist in Radarr..." -f $Title) -ForegroundColor Yellow
+            }
+            If ($PSCmdlet.ParameterSetName -eq "Id") {
+                Write-Host ("Movie with ID [{0}] does not exist in Radarr..." -f $Id) -ForegroundColor Yellow
+            }
             $DeleteStatus = $false
         }
 
@@ -459,6 +464,111 @@ Function Remove-RadarrMovie{
 
     }
 }
+
+
+
+#Remove movie
+Function Refresh-RadarrMovie{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true,
+            ValueFromPipelineByPropertyName=$true,
+            Position=0,
+            ParameterSetName="Id")]
+        [int32]$Id,
+
+        [Parameter(Mandatory=$true,
+            ValueFromPipelineByPropertyName=$true,
+            Position=0,
+            ParameterSetName="Title")]
+        [string]$Title,
+
+        [Parameter(Mandatory=$false)]
+        [string]$URL = 'http://localhost',
+
+        [Parameter(Mandatory=$false)]
+        [string]$Port = '7878',
+
+        [Parameter(Mandatory=$false)]
+        [string]$Api    )
+    Begin{
+        #if global setting found use those instead fo defualt
+        If($Global:RadarrURL -and $Global:RadarrPort){
+            [string]$URI = Get-RadarrURI "${Global:RadarrURL}:${Global:RadarrPort}/${global:ApiPath}/command"
+        }
+        Else{
+            [string]$URI = Get-RadarrURI "${URL}:${Port}/${global:ApiPath}/command"
+        }
+
+        #use global API or check if specified APi is not null
+        If($Global:RadarrAPIkey){
+            $Api = $Global:RadarrAPIkey
+        }
+        Elseif($Api -eq $null){
+            Throw "-Api parameter is mandatory"
+        }
+
+        if (-not $PSBoundParameters.ContainsKey('Verbose')) {
+            $VerbosePreference = $PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference')
+        }
+
+        $MovieIds = @()
+    }
+    Process {
+        If ($PSCmdlet.ParameterSetName -eq "Title") {
+            $ExistingMovie = Get-RadarrMovie -MovieTitle $Title -Api $Api -AsObject
+        }
+        If ($PSCmdlet.ParameterSetName -eq "Id") {
+            $ExistingMovie = Get-RadarrMovie -MovieId $Id -Api $Api -AsObject
+        }
+
+        If($ExistingMovie){
+            Write-Host ("Removing Movie [{0}] from Radarr..." -f $ExistingMovie.Title) -ForegroundColor Yellow
+            
+            $MovieIds += $Id
+
+            $Body = @{ 
+                name='RescanMovie';
+                movieIds=$MovieIds
+            }
+
+            $BodyObj = ConvertTo-Json -InputObject $Body #| % { [System.Text.RegularExpressions.Regex]::Unescape($_) }
+            #$BodyArray = ConvertFrom-Json -InputObject $BodyObj
+
+            $RefreshMovieArgs = @{Headers = @{"X-Api-Key" = $Api; 'Content-Type'='application/json'}
+                                Body = $BodyObj
+                                URI = "$URI"
+                                Method = "Post"
+            }
+            
+            try
+            {
+                $Request = Invoke-WebRequest @RefreshMovieArgs -Verbose:$VerbosePreference
+                $Refreshed = $true
+            }
+            catch {
+                Write-Host ("Unable to refresh movie [{0}]. Error [{1}]" -f $ExistingMovie.Title,$_.Exception.Message) -ForegroundColor Red
+                $Refreshed = $false
+            }
+
+        }
+        Else{
+            If ($PSCmdlet.ParameterSetName -eq "Title") {
+                Write-Host ("Movie with Title [{0}] does not exist in Radarr..." -f $Title) -ForegroundColor Yellow
+            }
+            If ($PSCmdlet.ParameterSetName -eq "Id") {
+                Write-Host ("Movie with ID [{0}] does not exist in Radarr..." -f $Id) -ForegroundColor Yellow
+            }
+            $Refreshed = $false
+        }
+
+    }
+    End {
+        Return $Refreshed
+    }
+}
+
+
 
 Function New-RadarrMovie {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact='Medium')]
