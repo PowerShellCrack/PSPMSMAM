@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<OmbiConfigs>
+	<ExternalURL>https://www.yourombiexternalurl.com/ombi/</ExternalURL>
+	<InternalURL>http://localhost:8282/</InternalURL>
+	<Port>8282</Port>
+	<!--
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML OmbiAuth.xml
+	-->
+	<Credentials>.\OmbiAuth.xml</Credentials>
+	<OmbiAPI>9e533d8e9d0740c490cb7326c33864bf</OmbiAPI>
+
+	<OmbiScriptConfigs>
+		<Name>OmbiAPIScript</Name>
+		<FriendlyName>Ombi API Script</FriendlyName>
+		<Version>1.1.0</Version>
+		<Date>1/1/2022</Date>
+		<!--> To generate new guid if version change, run in powershell: New-Guid -->
+		<GUID>03c094ed-38b0-4386-ba8a-167e3fa553b8</GUID>
+	</OmbiScriptConfigs>
+</OmbiConfigs>

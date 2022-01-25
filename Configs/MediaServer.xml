@@ -1,30 +1,32 @@
 <?xml version="1.0"?>
 <AutomationConfig>
 
+    <SendCriticalReport>True</SendCriticalReport>
+
 	<SourceConfigs>
-		<Config id="Plex" Load="True" ConfigFile="Plex.xml" />
-		<Config id="Radarr" Load="True" ConfigFile="Radarr.xml" />
-		<Config id="Sonarr" Load="True" ConfigFile="Sonarr.xml" />
-		<Config id="Gmail" Load="True" ConfigFile="Gmail.xml" />
-		<Config id="Tautulli" Load="True" ConfigFile="Tautulli.xml" />
+		<Config id="Plex" ConfigFile="Plex.xml" />
+		<Config id="Radarr" ConfigFile="Radarr.xml" />
+		<Config id="Sonarr" ConfigFile="Sonarr.xml" />
+		<Config id="Gmail" ConfigFile="Gmail.xml" />
+		<Config id="Tautulli" ConfigFile="Tautulli.xml" />
+        <Config id="rTorrent" ConfigFile="rTorrent.xml" />
 	</SourceConfigs>
 
-	<BtSyncCheckForFiles>True</BtSyncCheckForFiles>
-	<BtSync_FolderLocation>E:\Data\Downloads\btsync</BtSync_FolderLocation>
-	<BtSync_Secret_Key>AGEDVBGTF678AF6D024DD40B816516BA4A</BtSync_Secret_Key>
+	<Resillio_CheckForFiles>True</Resillio_CheckForFiles>
+    <Resillio_IgnoreSync>False</Resillio_IgnoreSync> <!-- Ignores the Resillio syncing status; could break sync if set to true-->
+	<Resillio_FolderLocation>C:\PSPMSMAM\Downloads\btsync</Resillio_FolderLocation>
 
 	<ServiceCheck>
-        <service name="Emby" FriendlyName="Media Streaming Service (Emby)" executable="MediaBrowser.ServerApplication.exe" state="running" />
-        <service name="PlexService" FriendlyName="Media Streaming Service (Plex)" executable="PlexService.exe" state="running" />
-		<service name="rslsyncsvc" FriendlyName="Transfer Service (Resilio)" executable="Resilio Sync.exe" state="running" />
-		<service name="NzbDrone" FriendlyName="TV Organizer Service (Sonarr)" executable="NzbDrone.Console.exe" state="running" />
-		<service name="Radarr" FriendlyName="Movie Organizer Service (Radaar)" executable="Radarr.Console.exe" state="running" />
-		<service name="Lidarr" FriendlyName="Music Organizer Service (Ladarr)" executable="Lidarr.Console.exe" state="running" />
-		<service name="Jackett" FriendlyName="Index Feed Service (Jackett)" executable="JackettService.exe" state="running" />
-		<service name="Ombi" FriendlyName="Plex Request Service (ombi)" executable="Ombi.exe" state="running" />
-        <service name="Tomcat9" FriendlyName="Web Service (subsonic)" executable="Tomcat9.exe" state="running" />
-        <service name="W3SVC" FriendlyName="Web Service (IIS)" executable="svchost.exe" state="running" />
-        <service name="Unifi" FriendlyName="UniFi Controller" executable="UniFi.exe" state="running" />
+        <!--<service name="Emby" FriendlyName="Media Streaming Service (Emby)" executable="MediaBrowser.ServerApplication.exe" state="running" Critical="Low" />-->
+        <service name="PlexService" FriendlyName="Media Streaming Service (Plex)" executable="PlexService.exe" state="running" Critical="High" />
+		<service name="rslsyncsvc" FriendlyName="Transfer Service (Resilio)" executable="Resilio Sync.exe" state="running" Critical="Low" />
+		<service name="NzbDrone" FriendlyName="TV Organizer Service (Sonarr)" executable="NzbDrone.Console.exe" state="running" Critical="Medium" />
+		<service name="Radarr" FriendlyName="Movie Organizer Service (Radaar)" executable="Radarr.Console.exe" state="running" Critical="Medium" />
+		<!--<service name="Lidarr" FriendlyName="Music Organizer Service (Ladarr)" executable="Lidarr.Console.exe" state="running" Critical="Low" />-->
+		<!--<service name="Jackett" FriendlyName="Index Feed Service (Jackett)" executable="JackettService.exe" state="running" Critical="Medium" />-->
+		<service name="Ombi" FriendlyName="Plex Request Service (ombi)" executable="Ombi.exe" state="running" Critical="Medium" />
+        <service name="Tomcat9" FriendlyName="Web Service (subsonic)" executable="Tomcat9.exe" state="running" Critical="Low" />
+        <service name="W3SVC" FriendlyName="Web Service (IIS)" executable="svchost.exe" state="running" Critical="Medium" />
 	</ServiceCheck>
 
     <WebCheck>
@@ -43,28 +45,28 @@
 	<ProcessCheck>
 		<process name="Plex Media Server" exePath="C:\Program Files (x86)\Plex\Plex Media Server\Plex Media Server.exe" running="yes" />
 		<process name="peerblock" exePath="C:\Program Files\PeerBlock\peerblock.exe" running="yes" />
-		<process name="Azureus" exePath="C:\Program Files\Vuze\Azureus.exe" running="yes" />
+		<!--<process name="Azureus" exePath="C:\Program Files\Vuze\Azureus.exe" running="yes" />-->
 		<process name="Tautulli" exePath="C:\Python27\python.exe" command="E:\Data\Plex\Tautulli\Tautulli.py" running="yes" />
-		<process name="uTorrent" exePath="C:\Users\Administrator\AppData\Roaming\uTorrent\uTorrent.exe" running="no" />
-		<process name="NETGEAR Genie" exePath="C:\Program Files (x86)\NETGEAR Genie\bin\NETGEARGenie.exe" running="no" />
-		<process name="Dropbox" exePath="C:\Program Files (x86)\Dropbox\Client\Dropbox.exe" running="no" />
+		<!--<process name="uTorrent" exePath="C:\Users\Administrator\AppData\Roaming\uTorrent\uTorrent.exe" running="no" />-->
+		<!--<process name="NETGEAR Genie" exePath="C:\Program Files (x86)\NETGEAR Genie\bin\NETGEARGenie.exe" running="no" />-->
+		<!--<process name="Dropbox" exePath="C:\Program Files (x86)\Dropbox\Client\Dropbox.exe" running="no" />-->
 		<process name="Tomcat" exePath="C:\Program Files (x86)\Apache Software Foundation\Tomcat 7.0\bin\Tomcat7.exe" running="yes" />
 	</ProcessCheck>
 
 	<DirectoryConfigs>
 		<ProcessDownloads>
-			<Folder>D:\Data\Downloads\btsync</Folder>
-			<Folder>D:\Data\Downloads\Seedbox</Folder>
-			<Folder>D:\Data\Downloads\Torrents\Completed</Folder>
+			<Folder>C:\PSPMSMAM\Downloads\btsync</Folder>
+			<Folder>C:\PSPMSMAM\Downloads\Seedbox</Folder>
+			<Folder>C:\PSPMSMAM\Downloads\Torrents\Completed</Folder>
 		</ProcessDownloads>
 
 		<KeepDeletedDataDays>5</KeepDeletedDataDays>
 
 		<RSSTorrentCheck>True</RSSTorrentCheck>
 
-		<DeleteTorrents>D:\Data\Downloads\Torrents\Deleted</DeleteTorrents><!-- If blank, content will delete permanently-->
-		<ProcessedTorrents>E:\Data\Downloads\Torrents\Processed</ProcessedTorrents>
-		<InvalidTorrents>E:\Data\Downloads\Torrents\Failed</InvalidTorrents>
+		<DeleteTorrents>C:\PSPMSMAM\Downloads\Torrents\Deleted</DeleteTorrents><!-- If blank, content will delete permanently-->
+		<ProcessedTorrents>C:\PSPMSMAM\Downloads\Torrents\Processed</ProcessedTorrents>
+		<InvalidTorrents>C:\PSPMSMAM\Downloads\Torrents\Failed</InvalidTorrents>
 
 	</DirectoryConfigs>
 

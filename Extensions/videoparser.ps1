@@ -629,42 +629,49 @@ Function Format-TitleCase{
 }
 
 Function ConvertTo-MovieData {
+    [CmdletBinding()]
     Param (
         [Parameter(Mandatory=$true,Position=0)]
         [string]$Value,
         [switch]$FormatTitleCase
     )
-  
+    #TEST $Value = 'Last.of.the.Dogmen.1995.DVDRip.x264.AC3-Riding High.mkv'
     $MovieName = $Value
 
     $ext = [System.IO.Path]::GetExtension($MovieName)
     If($ext){$MovieName = $MovieName.replace($ext,'')}
         
     #find the resolution in movie name
+    $VideoRes = $null
     $MatchVideoRes = "\b480p\b|\b720p\b|\b1080p\b|\b1440\b|\b2160p\b|\b4320p\b|\b2k\b|\b4k\b"
     Do {
         If($MovieName -match $MatchVideoRes){
             $VideoRes = $Matches[0].ToLower()
+            Write-Verbose ('Found video resolution: {0}' -f $VideoRes)
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null    
         }
     }Until($MovieName -notmatch $MatchVideoRes)
 
     #find the video format in movie name
+    $VideoFormat = $null
     $MatchVideoFormat = "\bH264\b|\bx264\b|\bx265\b|\bHEVC\b|\bXVID\b|\bAVC\b|\bDIVX\b|\bVVC\b|\bEVC\b"
     Do {
         If($MovieName -match $MatchVideoFormat){
             $VideoFormat = $Matches[0]
+            Write-Verbose ('Found video format: {0}' -f $VideoFormat)
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null
         }
     }Until($MovieName -notmatch $MatchVideoFormat)
 
     #find the video format in movie name
+    $AudioFormat = $null
     $MatchVideoFormat = "\bAAC\b|\bAAC5.1\b|\bDD5.1\b|\bAC3\b|\bDTS\b"
     Do {
         If($MovieName -match $MatchVideoFormat){
             $AudioFormat = $Matches[0]
+            Write-Verbose ('Found audio format: {0}' -f $AudioFormat)
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null
         }
@@ -672,16 +679,19 @@ Function ConvertTo-MovieData {
 
 
     #find the video format in movie name
+    $VideoProfile = $null
     $MatchVideoFormat = "\bWEBDL\b|\bBDRip\b|\bBrRip\b|\bWEBRip\b|\bBluRay\b|\bCAM\b|\bSCREENER\b|\bHDCAM\b|\bTELESYNC\b|\bDVDr\b|\bDVDRip\b"
     Do {
         If($MovieName -match $MatchVideoFormat){
             $VideoProfile = $Matches[0]
+            Write-Verbose ('Found video profile: {0}' -f $VideoProfile)
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null
         }
     }Until($MovieName -notmatch $MatchVideoFormat)
 
     #find the video version in movie name
+    $VideoVersion = $Null
     $MatchVideoVersion = "EXTENDED|DIRECTOR|EDITOR|THEATRICAL|FINAL|\bREMASTERED\b|RELEASE|Special|Unrated|Uncut"
     Do {
         If($MovieName -match $MatchVideoVersion){
@@ -689,14 +699,17 @@ Function ConvertTo-MovieData {
             If($FormatTitleCase){
                 $VideoVersion = Format-TitleCase -String $VideoVersion
             }
+            Write-Verbose ('Found video version: {0}' -f $VideoVersion)
             $MovieName = $MovieName -replace $matches.Values,''
             $Matches = $null
             }
     }Until($MovieName -notmatch $MatchVideoVersion)
 
     #does the movie have a year incapsulated in parenthesis
+    $MovieYear = $null
     If($MovieName -match ".?\((.*?)\).*"){
         $MovieYear = $matches[1]
+        Write-Verbose ('Found movie year: {0}' -f $MovieYear)
         $MovieName = ($MovieName).replace("($MovieYear)","").Trim()
         $Matches = $null
     }
@@ -704,6 +717,7 @@ Function ConvertTo-MovieData {
     #assume a four digit number starting with 19 or 20 is a year
     if($MovieName -match "(19|20)[0-9][0-9]"){
         $MovieYear = $matches[0]
+        Write-Verbose ('Found movie year: {0}' -f $MovieYear)
         $MovieName = ($MovieName -split $MovieYear)[0]
         $Matches = $null
     }
@@ -723,15 +737,22 @@ Function ConvertTo-MovieData {
         $MovieTitle = Format-TitleCase -String $MovieTitle
     }
 
+
+    #build full title
+    $VideoPortion = $null
+    If($VideoVersion){$VideoPortion += $VideoVersion}
+    If($VideoRes){$VideoPortion += (' - ' + $VideoRes)}
+
     #Build movie name 
     If($MovieYear){
-        $FullTitle = ($MovieTitle + ' (' + $MovieYear + ') ' + $VideoVersion + ' - ' + $VideoRes).replace('  ',' ')
+        $FullTitle = ($MovieTitle + ' (' + $MovieYear + ') ' + $VideoPortion).replace('  ',' ').Trim()
         $SimpleTitle = ($MovieTitle + ' (' + $MovieYear + ')').Trim()
     }
     Else{
-        $FullTitle = ($MovieTitle + ' ' + $VideoVersion + ' - ' + $VideoRes).replace('  ',' ')
-        $SimpleTitle = $MovieTitle
+        $FullTitle = ($MovieTitle + ' ' + $VideoPortion).replace('  ',' ').Trim()
+        $SimpleTitle = $MovieTitle.Trim()
     }
+    #[System.String]::Concat($VideoVersion,' - ',$VideoRes)
 
     $movie = '' | Select Title,Year,Resolution,Profile,Video,Audio,Version,SimpleTitle,FullTitle,FileExtension,FileName
     $movie.Title = $MovieTitle

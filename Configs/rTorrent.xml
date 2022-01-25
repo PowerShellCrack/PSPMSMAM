@@ -1,11 +1,16 @@
 <?xml version="1.0"?>
 <rTorrentConfigs>
-	<ExternalURL>https://nl4995.dediseedbox.com</ExternalURL>
+	<ExternalURL>https://www.yourrtorrentexternalurl.com/</ExternalURL>
     <RPCPath>rutorrent/plugins/httprpc/action.php</RPCPath>
     <RequestBody><![CDATA[<?xml version='1.0'?><methodCall><methodName>system.listMethods</methodName></methodCall>]]></RequestBody>
 	<!--
-		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML rTorrentAuth.xml 
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML rTorrentAuth.xml
 	-->
-	<Credentials>.\Configs\rTorrentAuth.xml</Credentials>
-</rTorrentConfigs>
+	<Credentials>.\rTorrentAuth.xml</Credentials>
 
+    <SshConsole>
+        <hostname>188.192.168.1</hostname>
+        <hostport>30678</hostport>
+        <HostCreds>.\rTorrentAuth.xml</HostCreds>
+    </SshConsole>
+</rTorrentConfigs>

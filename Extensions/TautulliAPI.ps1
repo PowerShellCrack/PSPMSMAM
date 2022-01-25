@@ -158,7 +158,7 @@ Function Get-TautulliAPIKey{
         [System.Management.Automation.PSCredential]$credentials
     )
 
-    $Username = $credentials.GetNetworkCredential().UserName 
+    $Username = $credentials.GetNetworkCredential().UserName
     $password = $credentials.GetNetworkCredential().Password
 
     $TautulliArgs = @{Headers = @{}
@@ -184,9 +184,6 @@ Function Get-TautulliUsers{
         [string] $Filter
     )
     Begin{
-        ## Get the name of this function
-		[string]${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name
-
         #use global API or check if specified APi is not null
         If($Global:TautulliAPIKey){
             $apiKey = $Global:TautulliAPIKey
@@ -210,7 +207,7 @@ Function Get-TautulliUsers{
     }
     End{
         If($Filter){
-            $request.response.data | Where username -eq $filter
+            $request.response.data | Where-Object username -eq $filter
         }
         Else{
             $request.response.data
@@ -227,20 +224,17 @@ Function Get-TautulliUser{
         [string] $UserId
     )
     Begin{
-        ## Get the name of this function
-		[string]${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name
-
         #use global API or check if specified APi is not null
         If($Global:TautulliAPIKey){
             $apiKey = $Global:TautulliAPIKey
         }
         Elseif($null -eq $apiKey){
             Throw "-Api parameter is mandatory"
-        }        
+        }
     }
     Process{
         If($Username){
-            $UserId = Get-TautulliUsers -Filter $Username | Select -ExpandProperty user_id
+            $UserId = Get-TautulliUsers -Filter $Username | Select-Object -ExpandProperty user_id
         }
 
         $TautulliArgs = @{Headers = @{}
@@ -257,7 +251,7 @@ Function Get-TautulliUser{
         }
     }
     End{
-       
+
     }
 }
 
@@ -270,9 +264,6 @@ Function Get-TautulliActivity{
         [switch] $Passthru
     )
     Begin{
-        ## Get the name of this function
-		[string]${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name
-
         #use global API or check if specified APi is not null
         If($Global:TautulliAPIKey){
             $apiKey = $Global:TautulliAPIKey
@@ -296,7 +287,7 @@ Function Get-TautulliActivity{
     }
     End{
         If($Passthru){
-            $request.response.data.sessions | Select @{Name='User';Expression={$_.user}},@{Name='Title';Expression={$_.full_title}}
+            $request.response.data.sessions | Select-Object @{Name='User';Expression={$_.user}},@{Name='Title';Expression={$_.full_title}}
         }
         Else{
             If ($request.response.data.stream_count -ge 1){
@@ -380,7 +371,7 @@ Function Get-TautulliHomeStats{
             Throw "-Api parameter is mandatory"
         }
 
-        
+
         switch($Section){
             'Most Watched Movie' {$statid = 'top_movies'}
             'Most Popular Movies' {$statid = 'popular_movies'}
@@ -393,12 +384,12 @@ Function Get-TautulliHomeStats{
             'Most Active Users' {$statid = 'top_users'}
             'Most Active Platforms' {$statid = 'top_platforms'}
             'Most Concurrent Streams' {$statid = 'most_concurrent'}
-        }                                                           
-        
+        }
+
         $TautulliArgs = @{Headers = @{}
                     URI = ($URL + '/api/v2?apikey=' + $apiKey + "&cmd=get_home_stats")
                     Method = "Get"
-                }                                                                                                            
+                }
     }
     Process{
         try {
@@ -412,7 +403,7 @@ Function Get-TautulliHomeStats{
 
         If($null -ne $request){
             If($Section){
-                $request.response.data | Where stat_id -eq $statid | Select -ExpandProperty rows
+                $request.response.data | Where-Object stat_id -eq $statid | Select-Object -ExpandProperty rows
             }Else{
                 $request.response.data
             }
@@ -428,9 +419,6 @@ Function Get-TautulliLibraries{
         [string] $Filter
     )
     Begin{
-        ## Get the name of this function
-		[string]${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name
-
         #use global API or check if specified APi is not null
         If($Global:TautulliAPIKey){
             $apiKey = $Global:TautulliAPIKey
@@ -454,7 +442,7 @@ Function Get-TautulliLibraries{
     }
     End{
         If($Filter){
-            $request.response.data | Where section_name -like "*$filter*"
+            $request.response.data | Where-Object section_name -like "*$filter*"
         }
         Else{
             $request.response.data
@@ -480,7 +468,7 @@ Function Get-TautulliLIbraryWatchTimeStats{
         Elseif($null -eq $apiKey){
             Throw "-Api parameter is mandatory"
         }
-       
+
         $param = '&section_id=' + $SectionId
 
         If($FromDays){
@@ -534,17 +522,17 @@ Function Get-TautulliUserStats{
         }
 
         If($UserName){
-            $UserId = Get-TautulliUsers -Filter $UserName | Select -ExpandProperty user_id
+            $UserId = Get-TautulliUsers -Filter $UserName | Select-Object -ExpandProperty user_id
         }
 
-        
+
         Switch($Category){
             'User Player' {$apicommand = 'get_user_player_stats'; $param = '&user_id=' + $UserId}
             'User Library' {$apicommand = 'get_library_user_stats';$param = '&section_id=' + $SectionId}
             'User Watch Time' {$apicommand = 'get_user_watch_time_stats'; $param = '&user_id=' + $UserId}
             default {$apicommand = 'get_user'; $param = '&user_id=' + $UserId}
         }
-        
+
         If($FromDays){
             $param += '&query_days=' + $FromDays
         }
@@ -625,30 +613,30 @@ Function Get-TautulliInfo{
     [CmdletBinding()]
     param(
         [string][ValidateSet(
-        
+
         "get_recently_added",
         "get_notification_log",
-        
+
         "get_plays_by_stream_type",
         "get_plays_per_month",
-        
+
         "get_geoip_lookup",
         "get_libraries_table",
         "get_plays_by_hourofday",
         "get_notifier_parameters",
-        
+
         "get_pms_token",
         "get_whois_lookup",
         "get_synced_items",
         "get_server_list",
         "get_plex_log",
-        
+
         "get_server_identity",
         "get_logs",
-       
+
         "get_old_rating_keys",
         "get_new_rating_keys",
-        
+
         "get_plays_by_dayofweek",
         "get_library_media_info",
         "get_date_formats",
@@ -660,7 +648,7 @@ Function Get-TautulliInfo{
         "get_history",
         "get_server_pref",
         "get_plays_by_date",
-        
+
         "get_notifiers",
         "get_servers_info",
         "get_library",
@@ -687,7 +675,7 @@ Function Get-TautulliInfo{
 
         $resource = "$URL/api/v2?apikey=$apiKey"
     }
-    
+
     Process{
         try {
             $request = Invoke-RestMethod -Method Get -Uri ("$resource" + "&cmd=" + "$command") -UseBasicParsing -Verbose:$VerbosePreference

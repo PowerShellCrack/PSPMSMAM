@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <PlexConfigs>
 	<PlexName>Trickys Plex on Demand</PlexName>
-	<PlexSupportURL>https://www.trickysplexondemand.com</PlexSupportURL>
+	<PlexSupportURL>https://www.yourplexexternalurl.com//PlexSupportURL>
 
 	<UseURLType>Internal</UseURLType>
 	<ExternalURL>https://www.trickysplexondemand.com/web/</ExternalURL>
@@ -15,11 +15,11 @@
 		<Name>PSPlexAPIScript</Name>
 		<FriendlyName>PowerShell Plex API Script</FriendlyName>
 		<Version>1.1.0</Version>
-		<Date>12/8/2016</Date>
+		<Date>1/1/2022</Date>
 		<!--> To generate new guid if version change, run in powershell: New-Guid -->
-		<GUID>9bd7e719-bcb3-4dcd-90aa-abcb1f1326b8</GUID>
+		<GUID>0e1d6082-364a-41ef-bab6-ec42ae1e1a48</GUID>
 	</PlexScriptConfigs>
 
 	<RunPlexScannerList>False</RunPlexScannerList>
-	<PlexListExportPath>E:\Data\Plex\PlexLibrary.txt</PlexListExportPath>
+	<PlexListExportPath>C:\PSPMSMAM\Plex\PlexLibrary.txt</PlexListExportPath>
 </PlexConfigs>

@@ -1,55 +1,56 @@
 ﻿
-<#
-.Synopsis
-A quick and easy way to get information on Movies.
-This Script also has the ability to download movies using the Download-Movie function.
-The download function requires Qbittorrent to be installed on your computer.
-As always, take care when downloading files from the internet. Please use a VPN service as needed.
 
-.DESCRIPTION
-Genre Options:
-
-Action
-Adventure
-Animation
-Biography
-Comedy
-Crime
-Documentary
-Drama
-Family
-Fantasy
-History
-Horror
-Musical
-Mystery
-Romance
-Sci_fi
-Short
-Sport
-Thriller
-War
-Western
-
-.EXAMPLE
-    #####
-   Get-Movie -Name Inception
-.EXAMPLE
-    #####
-   Get-Movie Intersteller
-.EXAMPLE
-    #####
-    Movies with a space in the name require the full name to be wrapped in single quotes. Get-Movie 'The Silence of the lambs'
-.EXAMPLE
-    #####
-  Get-Movie -Genre Action
-.EXAMPLE
-    #####
-   Movies with a space in the name require the full name to be wrapped in single quotes. Download-Movie 'Forrest Gump'
-.FUNCTIONALITY
-   This Cmdlet is used for gathering information about specific movies while also offering the ability to download any movie via bit torrent.
-#>
 function Get-Movie{
+    <#
+    .Synopsis
+    A quick and easy way to get information on Movies.
+    This Script also has the ability to download movies using the Download-Movie function.
+    The download function requires Qbittorrent to be installed on your computer.
+    As always, take care when downloading files from the internet. Please use a VPN service as needed.
+
+    .DESCRIPTION
+    Genre Options:
+
+    Action
+    Adventure
+    Animation
+    Biography
+    Comedy
+    Crime
+    Documentary
+    Drama
+    Family
+    Fantasy
+    History
+    Horror
+    Musical
+    Mystery
+    Romance
+    Sci_fi
+    Short
+    Sport
+    Thriller
+    War
+    Western
+
+    .EXAMPLE
+        #####
+    Get-Movie -Name Inception
+    .EXAMPLE
+        #####
+    Get-Movie Intersteller
+    .EXAMPLE
+        #####
+        Movies with a space in the name require the full name to be wrapped in single quotes. Get-Movie 'The Silence of the lambs'
+    .EXAMPLE
+        #####
+    Get-Movie -Genre Action
+    .EXAMPLE
+        #####
+    Movies with a space in the name require the full name to be wrapped in single quotes. Download-Movie 'Forrest Gump'
+    .FUNCTIONALITY
+    This Cmdlet is used for gathering information about specific movies while also offering the ability to download any movie via bit torrent.
+    #>
     [CmdletBinding()]
     Param
     (

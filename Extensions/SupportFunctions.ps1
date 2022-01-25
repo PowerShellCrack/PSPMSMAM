@@ -192,7 +192,13 @@ function Merge-MultipleObjects {
 
         [switch]$IncludeNullValues
     )
-    
+    <#
+    $MultipleObjectsParams.Object1
+    $MultipleObjectsParams.Object2
+    $MultipleObjectsParams.Object3
+    $MultipleObjectsParams.Object4
+
+    #>
     If($IncludeMethods){$IsSettableBool = 'True|False'}Else{$IsSettableBool = 'True'}
     
     $Object = [ordered] @{}

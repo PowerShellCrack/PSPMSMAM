@@ -1,21 +1,20 @@
 <?xml version="1.0"?>
 <TautulliConfigs>
-	<ExternalURL>https://www.trickysplexondemand.com/tautulli/home</ExternalURL>
+	<ExternalURL>https://www.yourtautulliexternalurl.com/tautulli/home</ExternalURL>
 	<InternalURL>http://0.0.0.0:8181/tautulli/</InternalURL>
 	<Port>8181</Port>
 	<!--
-		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML TautulliAuth.xml 
+		To generate a secure user credential file, run in powershell: Get-Credential | Export-CliXML TautulliAuth.xml
 	-->
-	<Credentials>.\Configs\TautulliAuth.xml</Credentials>
-	<TautulliAPI>571e884a68914f16bcc86bb258bafdab</TautulliAPI>
-	
+	<Credentials>.\TautulliAuth.xml</Credentials>
+	<TautulliAPI>2be4f7b9787f41c694f147686beaef6f</TautulliAPI>
+
 	<TautulliScriptConfigs>
 		<Name>TautulliAPIScript</Name>
 		<FriendlyName>Tautulli API Script</FriendlyName>
 		<Version>1.1.0</Version>
-		<Date>12/8/2016</Date>
+		<Date>1/1/2022</Date>
 		<!--> To generate new guid if version change, run in powershell: New-Guid -->
-		<GUID>605e8149-d9d0-465b-95e7-72b432511e63</GUID>
+		<GUID>f173ee5c-308e-4525-864b-d3cc7a0e30f7</GUID>
 	</TautulliScriptConfigs>
 </TautulliConfigs>
-
