@@ -4,7 +4,8 @@
 
 - Fixed script detecting file sample in name as actual movie; added configurable name sin file to check for
 - Added email notification; only send email if critical service is down or new movie has been added.
-- Added CHANGELOG; track all changes to scripts. 
+- Added CHANGELOG; track all changes to scripts.
+- Update offline TMDB files to year (date) format
 ## 1.1.2 - January 2, 2022
 
 - Added FormatTitleCase switch to movie parser; ensures title is capitalized correctly
